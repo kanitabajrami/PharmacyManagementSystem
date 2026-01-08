@@ -75,23 +75,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\USER\\.nuget\\packages\\": {},
+    "C:\\Users\\User8768\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\USER\\Downloads\\.Net\\PharmacyManagmentSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\PharmacyManagmentSystem.csproj",
+      "projectUniqueName": "C:\\Users\\User8768\\Documents\\dotnet\\PharmacyManagementSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\PharmacyManagmentSystem.csproj",
       "projectName": "PharmacyManagmentSystem",
-      "projectPath": "C:\\Users\\USER\\Downloads\\.Net\\PharmacyManagmentSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\PharmacyManagmentSystem.csproj",
-      "packagesPath": "C:\\Users\\USER\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\USER\\Downloads\\.Net\\PharmacyManagmentSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\obj\\",
+      "projectPath": "C:\\Users\\User8768\\Documents\\dotnet\\PharmacyManagementSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\PharmacyManagmentSystem.csproj",
+      "packagesPath": "C:\\Users\\User8768\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\User8768\\Documents\\dotnet\\PharmacyManagementSystem\\backend\\PharmacyManagmentSystem\\PharmacyManagmentSystem\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\USER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\User8768\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -148,7 +148,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.308/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
