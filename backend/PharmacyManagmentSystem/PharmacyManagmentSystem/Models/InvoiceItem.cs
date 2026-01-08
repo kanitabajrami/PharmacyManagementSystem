@@ -2,7 +2,7 @@
 
 namespace PharmacyManagmentSystem.Models
 {
-    public class InvoiceItems
+    public class InvoiceItem
     {
         public int Id { get; set; }
         public int InvoiceId { get; set; }
