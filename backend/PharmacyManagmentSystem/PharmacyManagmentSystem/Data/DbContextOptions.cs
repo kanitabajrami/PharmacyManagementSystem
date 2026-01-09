@@ -1,7 +1,6 @@
 ﻿namespace PharmacyManagmentSystem.Data
 {
-    public class ApplicationDbContext
+    public class DbContextOptions<T>
     {
-
     }
 }
