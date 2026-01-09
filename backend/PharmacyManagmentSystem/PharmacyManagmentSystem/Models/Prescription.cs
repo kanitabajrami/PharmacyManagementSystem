@@ -14,9 +14,9 @@ namespace PharmacyManagmentSystem.Models
 
         [Required]
 
-        public DateTime DateIssued { get; set; }=DateTime.Now;
+        public DateTime DateIssued { get; set; } = DateTime.Now;
 
-        public ICollection<Medicine> Medicines { get; set; } //many-to-many
+        public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }     //many-to-many: prescription contains multiple medicines
 
 
     }
