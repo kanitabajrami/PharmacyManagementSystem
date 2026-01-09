@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using PharmacyManagmentSystem.Data;
+using PharmacyManagmentSystem.Repositories;
 
 namespace PharmacyManagmentSystem
 {
@@ -20,6 +21,8 @@ namespace PharmacyManagmentSystem
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
 
             var app = builder.Build();
 

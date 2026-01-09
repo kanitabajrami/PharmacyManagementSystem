@@ -15,7 +15,7 @@ namespace PharmacyManagmentSystem.Models
         public string BatchNumber { get; set; } 
 
         [Required]
-        public DateTime ExipryDate { get; set; }
+        public DateTime ExpiryDate { get; set; }
 
         [Required]
         public decimal Price { get; set; }
