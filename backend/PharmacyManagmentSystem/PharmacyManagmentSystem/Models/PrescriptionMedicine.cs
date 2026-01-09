@@ -1,6 +1,6 @@
 ﻿namespace PharmacyManagmentSystem.Models
 {
-    //join table for many-to-many between prescription and medicine
+    // Join table for many-to-many relationship between prescription and medicine
     public class PrescriptionMedicine
     {
         public int PrescriptionId { get; set; }

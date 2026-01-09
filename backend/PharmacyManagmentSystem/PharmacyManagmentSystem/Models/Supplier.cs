@@ -9,6 +9,6 @@ namespace PharmacyManagmentSystem.Models
         public string Name { get; set; }
         [Required]
         public string ContactInfo { get; set; }
-        public ICollection<Medicine> Medicines { get; set; }    //one to many (one supplier -> many medicines)
+        public ICollection<Medicine> Medicines { get; set; }    // One-to-many (one supplier -> many medicines)
     }
 }

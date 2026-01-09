@@ -23,13 +23,13 @@ namespace PharmacyManagmentSystem.Models
         [Required]  
         public int Quantity { get; set; }
 
-        //Foreign key
-        //each medicine belongs to one supplier
+        // Foreign key
+        // Each medicine belongs to one supplier
         public int SupplierId { get; set; }
         public Supplier Supplier { get; set; }
 
-        public ICollection<InvoiceItem> InvoiceItems { get; set; }      //medicine can appear in many invoices
-        public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }        //many-to-many: medicine can be in many prescriptions
+        public ICollection<InvoiceItem> InvoiceItems { get; set; }      // Medicine can appear in many invoices
+        public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }        // Many-to-many: medicine can be in many prescriptions
 
 
     }

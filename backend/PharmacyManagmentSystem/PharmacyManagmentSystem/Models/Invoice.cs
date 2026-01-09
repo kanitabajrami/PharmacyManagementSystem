@@ -8,6 +8,6 @@
         //Foreign key
         public int UserId { get; set; }
         public User User { get; set; }
-        public ICollection<InvoiceItem> InvoiceItems { get; set; }      //one invoice has many invoice items
+        public ICollection<InvoiceItem> InvoiceItems { get; set; }      // One invoice has many invoice items
     }
 }
