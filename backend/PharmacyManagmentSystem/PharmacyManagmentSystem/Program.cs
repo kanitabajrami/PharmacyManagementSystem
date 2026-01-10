@@ -23,6 +23,7 @@ namespace PharmacyManagmentSystem
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
+            builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 
             var app = builder.Build();
 
