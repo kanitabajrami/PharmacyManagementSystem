@@ -126,6 +126,10 @@ namespace PharmacyManagmentSystem.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("PatientName")
                         .IsRequired()
                         .HasColumnType("text");

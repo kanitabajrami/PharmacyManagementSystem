@@ -18,6 +18,7 @@ namespace PharmacyManagmentSystem.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PatientId = table.Column<string>(type: "text", nullable: false),
                     PatientName = table.Column<string>(type: "text", nullable: false),
                     DoctorName = table.Column<string>(type: "text", nullable: false),
                     DateIssued = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
