@@ -7,6 +7,9 @@ namespace PharmacyManagmentSystem.Models
         public int Id { get; set; }
 
         [Required]
+        public string PatientId { get; set; }
+
+        [Required]
         public string PatientName { get; set; }
 
         [Required]

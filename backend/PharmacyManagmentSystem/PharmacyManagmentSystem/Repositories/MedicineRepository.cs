@@ -96,7 +96,5 @@ namespace PharmacyManagmentSystem.Repositories
                 .Where(m => m.ExpiryDate.Date <= limit)
                 .ToListAsync();
         }
-
-   
     }
 }

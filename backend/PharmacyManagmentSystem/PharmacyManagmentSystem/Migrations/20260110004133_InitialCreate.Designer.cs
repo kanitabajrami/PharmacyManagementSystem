@@ -12,7 +12,7 @@ using PharmacyManagmentSystem.Data;
 namespace PharmacyManagmentSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260109224451_InitialCreate")]
+    [Migration("20260110004133_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -126,6 +126,10 @@ namespace PharmacyManagmentSystem.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DoctorName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PatientId")
                         .IsRequired()
                         .HasColumnType("text");
 
