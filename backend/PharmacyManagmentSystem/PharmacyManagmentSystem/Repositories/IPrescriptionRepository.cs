@@ -13,6 +13,6 @@ namespace PharmacyManagmentSystem.Repositories
         Task<IEnumerable<Prescription>> GetByPatientAsync(string id);
         Task<IEnumerable<Prescription>> GetByDoctorAsync(string name);
         Task<IEnumerable<Prescription>> GetExpiredPrescriptions();
-        Task<bool> IsExpired(int id);
+        Task<bool> IsExpiredAsync(int id);
     }
 }
