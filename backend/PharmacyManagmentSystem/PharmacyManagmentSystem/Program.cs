@@ -7,7 +7,7 @@ namespace PharmacyManagmentSystem
 {
     public class Program
     {
-        public static void Main(string[] args, InvoiceRepository invoiceRepository)
+        public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
