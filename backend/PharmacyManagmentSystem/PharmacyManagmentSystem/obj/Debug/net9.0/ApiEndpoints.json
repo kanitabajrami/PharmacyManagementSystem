@@ -1,5 +1,84 @@
 [
   {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "Method": "GetAll",
+    "RelativePath": "api/Invoice",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "Method": "Create",
+    "RelativePath": "api/Invoice",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "invoice",
+        "Type": "PharmacyManagmentSystem.Models.Invoice",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "Method": "GetById",
+    "RelativePath": "api/Invoice/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "Method": "Update",
+    "RelativePath": "api/Invoice/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "invoice",
+        "Type": "PharmacyManagmentSystem.Models.Invoice",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "Method": "Delete",
+    "RelativePath": "api/Invoice/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "PharmacyManagmentSystem.Controllers.MedicinesController",
     "Method": "GetAll",
     "RelativePath": "api/Medicines",
