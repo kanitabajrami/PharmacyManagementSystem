@@ -7,7 +7,7 @@ namespace PharmacyManagmentSystem
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static void Main(string[] args, InvoiceRepository invoiceRepository)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +24,10 @@ namespace PharmacyManagmentSystem
 
             builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+            builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+
 
             var app = builder.Build();
 
