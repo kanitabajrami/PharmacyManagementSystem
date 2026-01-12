@@ -69,7 +69,7 @@ namespace PharmacyManagmentSystem.Repositories
         {
             return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DateIssued.AddDays(30) < DateTime.UtcNow).ToListAsync();
         }
-        public async Task<bool> IsExpired(int id)
+        public async Task<bool> IsExpiredAsync(int id)
         {
             var prescription = await GetByIdAsync(id);
             if (prescription == null)
