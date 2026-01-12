@@ -12,6 +12,6 @@ namespace PharmacyManagmentSystem.Repositories
 
         Task<IEnumerable<Invoice>> GetByUserAsync(int id);
         Task<IEnumerable<Invoice>> GetByDateRangeAsync(DateTime start, DateTime end);
-        Task<decimal> GetTotalAmountAsync(int id);
+        //Task<decimal> GetTotalAmountAsync(int id);   //mund te largohet
     }
 }

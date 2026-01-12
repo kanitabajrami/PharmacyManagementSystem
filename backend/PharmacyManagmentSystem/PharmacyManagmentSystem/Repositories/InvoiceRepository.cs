@@ -57,15 +57,15 @@ namespace PharmacyManagmentSystem.Repositories
             // Get invoices within a specific date range
             return await _dbcontext.Invoices.Include(i => i.InvoiceItems).ThenInclude(ii => ii.Medicine).Where(i => i.DateCreated >= start && i.DateCreated <= end).ToListAsync();
         }
-        public async Task<decimal> GetTotalAmountAsync(int invoiceId)
-        {
-            // Calculate total sum of all invoice items
-            var invoice = await _dbcontext.Invoices.Include(i => i.InvoiceItems).FirstOrDefaultAsync(i => i.Id == invoiceId);
+        //public async Task<decimal> GetTotalAmountAsync(int invoiceId)
+        //{
+        //    // Calculate total sum of all invoice items
+        //    var invoice = await _dbcontext.Invoices.Include(i => i.InvoiceItems).FirstOrDefaultAsync(i => i.Id == invoiceId);
 
-            if (invoice == null)
-                throw new Exception("Invoice not found");
+        //    if (invoice == null)
+        //        throw new Exception("Invoice not found");
 
-            return invoice.InvoiceItems.Sum(ii => ii.Price * ii.Quantity);
-        }
+        //    return invoice.InvoiceItems.Sum(ii => ii.Price * ii.Quantity);
+        //}
     }
 }
