@@ -65,7 +65,7 @@ namespace PharmacyManagmentSystem.Repositories
             if (invoice == null)
                 throw new Exception("Invoice not found");
 
-            return invoice.InvoiceItems.Sum(ii => ii.Price);
+            return invoice.InvoiceItems.Sum(ii => ii.Price * ii.Quantity);
         }
     }
 }
