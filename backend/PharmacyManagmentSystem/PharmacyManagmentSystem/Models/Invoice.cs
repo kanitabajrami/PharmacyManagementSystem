@@ -3,7 +3,7 @@
     public class Invoice
     {
         public int Id { get; set; }
-        public DateTime DateCreated { get; set; } = DateTime.Now;
+        public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
         //Foreign key
         public int UserId { get; set; }

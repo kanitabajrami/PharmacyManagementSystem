@@ -12,7 +12,7 @@ using PharmacyManagmentSystem.Data;
 namespace PharmacyManagmentSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260110004133_InitialCreate")]
+    [Migration("20260112181222_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
