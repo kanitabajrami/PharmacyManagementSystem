@@ -71,29 +71,44 @@ namespace PharmacyManagmentSystem.Repositories
 
 
             if (!string.IsNullOrWhiteSpace(name))
-                query = query.Where(m => m.Name.ToLower().Contains(name.ToLower()));
+            {
+                var n = name.Trim();
+                query = query.Where(m => m.Name.ToLower().Contains(n.ToLower()));
+            }
 
             if (!string.IsNullOrWhiteSpace(category))
+            {
+                var c=category.Trim();
                 query = query.Where(m => m.Category.ToLower().Contains(category.ToLower()));
+            }
 
-            return await query.ToListAsync();
+            return await query.OrderBy(m=>m.Name).ToListAsync();
         }
         public async Task<IEnumerable<Medicine>> GetLowStockAsync(int threshold)
         {
+            if (threshold < 0) threshold = 0;
+
             return await _dbcontext.Medicines
                .AsNoTracking()
                .Include(m => m.Supplier)
                .Where(m => m.Quantity <= threshold)
+               .OrderBy(m => m.Quantity)
+               .ThenBy(m => m.Name)
                .ToListAsync();
         }
         public async Task<IEnumerable<Medicine>> GetExpiringSoonAsync(int days)
         {
-            var limit = DateTime.UtcNow.Date.AddDays(days);
+            if (days < 0) days = 0;
+
+            var today = DateTime.UtcNow.Date;
+            var limit = today.AddDays(days);
 
             return await _dbcontext.Medicines
                 .AsNoTracking()
                 .Include(m => m.Supplier)
-                .Where(m => m.ExpiryDate.Date <= limit)
+                .Where(m => m.ExpiryDate.Date >= today && m.ExpiryDate.Date <=limit)
+                .OrderBy(m => m.ExpiryDate)
+                .ThenBy(m => m.Name)
                 .ToListAsync();
         }
     }

@@ -16,6 +16,14 @@ namespace PharmacyManagmentSystem.DTOs
         [Range(0,int.MaxValue)]
         public int Quantity { get; set; }
 
+
+        [Required]
+        public string BatchNumber { get; set; } 
+
+        [Required]
+        public DateTime ExpiryDate { get; set; }
+
+       
         [Required]
         public int SupplierId {  get; set; }
     }
@@ -27,6 +35,8 @@ namespace PharmacyManagmentSystem.DTOs
         public string Category { get; set; }
         public decimal Price { get; set; }
         public int Quantity { get; set; }
+        public string BatchNumber { get; set; }
+        public DateTime ExpiryDate { get; set; }
 
         public int SupplierId { get; set; }
         public string SupplierName { get; set; }
