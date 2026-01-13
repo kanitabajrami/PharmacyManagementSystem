@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using PharmacyManagmentSystem.DTOs;
+using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
 using PharmacyManagmentSystem.Repositories;
+using System.Net.WebSockets;
 
 namespace PharmacyManagmentSystem.Controllers
 {
@@ -9,10 +12,12 @@ namespace PharmacyManagmentSystem.Controllers
     public class PrescriptionController : ControllerBase
     {
         private readonly IPrescriptionRepository _repository;
+        private readonly PrescriptionHelper _helper;
 
-        public PrescriptionController(IPrescriptionRepository repository)
+        public PrescriptionController(IPrescriptionRepository repository, PrescriptionHelper helper)
         {
             _repository = repository;
+            _helper = helper;
         }
 
         // GET: api/Prescription
@@ -28,24 +33,56 @@ namespace PharmacyManagmentSystem.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var prescription = await _repository.GetByIdAsync(id);
+            if (prescription == null) 
+                return NotFound("Prescription not found");
             return Ok(prescription);
         }
 
         // POST: api/Prescription
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Prescription prescription)
+        public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
         {
-            await _repository.AddAsync(prescription);
-            return CreatedAtAction(nameof(GetById), new {id =  prescription.Id}, prescription);
-        }
+            if (!ModelState.IsValid) 
+                return BadRequest(ModelState);
+
+            try
+            {
+                var prescription = PrescriptionMapper.ToEntity(dto);
+
+                await _helper.HandleMissingMedicines(prescription, dto);
+
+                await _repository.AddAsync(prescription);
+                return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, prescription);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Failed to import prescription: {ex.Message}");
+            }
+            }
 
         // PUT: api/Prescription/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Prescription prescription)
+        public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
         {
-            if (id != prescription.Id) return BadRequest("ID mismatch");
-            await _repository.UpdateAsync(prescription);
-            return Ok(prescription);
+            if(!ModelState.IsValid)
+                return BadRequest(ModelState);
+            try
+            {
+                var existing = await _repository.GetByIdAsync(id);
+                if (existing == null)
+                    return NotFound("Prescription not found");
+
+                PrescriptionMapper.UpdateEntity(existing, dto);
+
+                await _helper.HandleMissingMedicines(existing, dto);
+
+                await _repository.UpdateAsync(existing);
+                return Ok(existing);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Failed to update prescription: {ex.Message}");
+            }
         }
 
         // DELETE: api/Prescription/{id}

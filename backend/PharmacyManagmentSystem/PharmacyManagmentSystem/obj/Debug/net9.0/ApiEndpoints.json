@@ -266,8 +266,8 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "prescription",
-        "Type": "PharmacyManagmentSystem.Models.Prescription",
+        "Name": "dto",
+        "Type": "PharmacyManagmentSystem.DTOs.PrescriptionDto",
         "IsRequired": true
       }
     ],
@@ -303,8 +303,8 @@
         "IsRequired": true
       },
       {
-        "Name": "prescription",
-        "Type": "PharmacyManagmentSystem.Models.Prescription",
+        "Name": "dto",
+        "Type": "PharmacyManagmentSystem.DTOs.PrescriptionDto",
         "IsRequired": true
       }
     ],
