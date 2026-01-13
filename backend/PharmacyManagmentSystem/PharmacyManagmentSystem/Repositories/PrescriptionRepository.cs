@@ -65,16 +65,16 @@ namespace PharmacyManagmentSystem.Repositories
             // Case-insensitive search by doctor name
             return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DoctorName.ToLower() == name.ToLower()).ToListAsync();
         }
-        public async Task<IEnumerable<Prescription>> GetExpiredPrescriptions()
-        {
-            return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DateIssued.AddDays(30) < DateTime.UtcNow).ToListAsync();
-        }
-        public async Task<bool> IsExpiredAsync(int id)
-        {
-            var prescription = await GetByIdAsync(id);
-            if (prescription == null)
-                throw new Exception("Prescription not found");
-            return prescription.DateIssued.AddDays(30) < DateTime.UtcNow;       // Expired if its older than 30 days
-        }
+        //public async Task<IEnumerable<Prescription>> GetExpiredPrescriptions()
+        //{
+        //    return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DateIssued.AddDays(30) < DateTime.UtcNow).ToListAsync();
+        //}
+        //public async Task<bool> IsExpiredAsync(int id)
+        //{
+        //    var prescription = await GetByIdAsync(id);
+        //    if (prescription == null)
+        //        throw new Exception("Prescription not found");
+        //    return prescription.DateIssued.AddDays(30) < DateTime.UtcNow;       // Expired if its older than 30 days
+        //}
     }
 }
