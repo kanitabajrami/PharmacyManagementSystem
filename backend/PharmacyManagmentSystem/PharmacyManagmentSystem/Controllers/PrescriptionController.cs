@@ -72,20 +72,20 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(prescriptions);
         }
 
-        // GET: api/Prescription/expired
-        [HttpGet("expired")]
-        public async Task<IActionResult> GetExpired()
-        {
-            var expired = await _repository.GetExpiredPrescriptions();
-            return Ok(expired);
-        }
+        //// GET: api/Prescription/expired
+        //[HttpGet("expired")]
+        //public async Task<IActionResult> GetExpired()
+        //{
+        //    var expired = await _repository.GetExpiredPrescriptions();
+        //    return Ok(expired);
+        //}
 
-        // GET: api/Prescription/{id}/isExpired
-        [HttpGet("{id}/isExpired")]
-        public async Task<IActionResult> IsExpired(int id)
-        {
-            var result = await _repository.IsExpiredAsync(id);
-            return Ok(result);
-        }
+        //// GET: api/Prescription/{id}/isExpired
+        //[HttpGet("{id}/isExpired")]
+        //public async Task<IActionResult> IsExpired(int id)
+        //{
+        //    var result = await _repository.IsExpiredAsync(id);
+        //    return Ok(result);
+        //}
     }
 }

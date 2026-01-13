@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PharmacyManagmentSystem.DTOs;
+using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
 using PharmacyManagmentSystem.Repositories;
 
@@ -19,7 +20,7 @@ namespace PharmacyManagmentSystem.Controllers
         public async Task<IActionResult> GetAll()
         {
             var suppliers = await _supplierRepository.GetAllAsync();
-            return Ok(suppliers);
+            return Ok(suppliers.Select(SupplierMapper.ToResponseDto));
         }
 
         [HttpGet("{id:int}")]
@@ -28,33 +29,23 @@ namespace PharmacyManagmentSystem.Controllers
             var supplier=await _supplierRepository.GetByIdAsync(id);
 
             if (supplier == null) return NotFound();
+            return Ok(SupplierMapper.ToResponseDto(supplier));
 
-            var dto = new SupplierDto
-            {
-                Id = supplier.Id,
-                Name = supplier.Name,
-                ContactInfo = supplier.ContactInfo,
-                MedicinesCount = supplier.Medicines?.Count ?? 0
-            };
-
-            return Ok(dto);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SupplierDto dto)
         {
-            var supplier = new Supplier
-            {
-                Name = dto.Name,
-                ContactInfo = dto.ContactInfo
-            };
+           
+            var supplier= SupplierMapper.ToEntity(dto);
 
             await _supplierRepository.AddAsync (supplier);
 
-            dto.Id = supplier.Id;
-            dto.MedicinesCount = 0;
+            var created = await _supplierRepository.GetByIdAsync(supplier.Id);
+            if (created == null) return StatusCode(500, "Supplier saved but could not be loaded.");
 
-            return CreatedAtAction(nameof(GetById), new { id = supplier.Id }, dto);
+
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, SupplierMapper.ToResponseDto(created));
         }
 
         [HttpPut("{id:int}")]
@@ -63,15 +54,15 @@ namespace PharmacyManagmentSystem.Controllers
             var supplier = await _supplierRepository.GetByIdAsync(id);
             if (supplier == null) return NotFound();
 
-            supplier.Name = dto.Name;
-            supplier.ContactInfo = dto.ContactInfo;
+            SupplierMapper.UpdateEntity(supplier,dto);
 
             await _supplierRepository.UpdateAsync(supplier);
 
-            dto.Id = supplier.Id;
-            dto.MedicinesCount = supplier.Medicines?.Count ?? 0;
+            var updated = await _supplierRepository.GetByIdAsync(id);
+            if (updated == null) return StatusCode(500, "Supplier updated but could not be loaded.");
 
-            return Ok(dto);
+            return Ok(SupplierMapper.ToResponseDto(updated));
+
         }
 
         [HttpDelete("{id:int}")]
@@ -80,6 +71,10 @@ namespace PharmacyManagmentSystem.Controllers
             var supplier= await _supplierRepository.GetByIdAsync(id);
 
             if (supplier == null) return NotFound($"Supplier with id {id} not found.");
+
+            if (supplier.Medicines.Any())
+                throw new ArgumentException("Cannot delete supplier because it has medicines.");
+
 
             await _supplierRepository.DeleteAsync(id);
             return NoContent();

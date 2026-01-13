@@ -80,22 +80,6 @@
   },
   {
     "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
-    "Method": "GetTotal",
-    "RelativePath": "api/Invoice/{id}/total",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
     "Method": "GetByDateRange",
     "RelativePath": "api/Invoice/range",
     "HttpMethod": "GET",
@@ -344,22 +328,6 @@
   },
   {
     "ContainingType": "PharmacyManagmentSystem.Controllers.PrescriptionController",
-    "Method": "IsExpired",
-    "RelativePath": "api/Prescription/{id}/isExpired",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.PrescriptionController",
     "Method": "GetByDoctor",
     "RelativePath": "api/Prescription/doctor/{doctorName}",
     "HttpMethod": "GET",
@@ -372,16 +340,6 @@
         "IsRequired": true
       }
     ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.PrescriptionController",
-    "Method": "GetExpired",
-    "RelativePath": "api/Prescription/expired",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
     "ReturnTypes": []
   },
   {

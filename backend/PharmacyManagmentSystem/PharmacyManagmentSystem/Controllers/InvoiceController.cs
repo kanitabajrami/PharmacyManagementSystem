@@ -75,12 +75,12 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(invoices);
         }
 
-        // GET: api/Invoice/{id}/total
-        [HttpGet("{id}/total")]
-        public async Task<IActionResult> GetTotal(int id)
-        {
-            var total = await _repository.GetTotalAmountAsync(id);
-            return Ok(total);
-        }
+        //// GET: api/Invoice/{id}/total
+        //[HttpGet("{id}/total")]
+        //public async Task<IActionResult> GetTotal(int id)
+        //{
+        //    var total = await _repository.GetTotalAmountAsync(id);
+        //    return Ok(total);
+        //}
     }
 }

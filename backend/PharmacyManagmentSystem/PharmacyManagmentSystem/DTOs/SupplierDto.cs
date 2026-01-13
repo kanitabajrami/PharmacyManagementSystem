@@ -4,11 +4,22 @@ namespace PharmacyManagmentSystem.DTOs
 {
     public class SupplierDto
     {
-        public int Id { get; set; }            // used in responses
-        public string Name { get; set; } = string.Empty;
-        public string? ContactInfo { get; set; }
+        [Required]
+        public string Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public bool IsActive { get; set; } = true;
 
-        // Optional: returned in GET, ignored in POST
+    }
+
+    public class SupplierResponseDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Phone { get; set; }
+        public string Email { get; set; }
+        public bool IsActive { get; set; } = true;
         public int MedicinesCount { get; set; }
     }
+
 }
