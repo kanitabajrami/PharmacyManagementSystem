@@ -47,11 +47,11 @@ namespace PharmacyManagmentSystem.Controllers
 
             try
             {
-                var prescription = PrescriptionMapper.ToEntity(dto);
+                var prescription = PrescriptionMapper.ToEntity(dto);        // Map DTO to entity
 
-                await _helper.HandleMissingMedicines(prescription, dto);
+                await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
 
-                await _repository.AddAsync(prescription);
+                await _repository.AddAsync(prescription);       // Save changes
                 return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, prescription);
             }
             catch (Exception ex)
@@ -68,15 +68,15 @@ namespace PharmacyManagmentSystem.Controllers
                 return BadRequest(ModelState);
             try
             {
-                var existing = await _repository.GetByIdAsync(id);
+                var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
                 if (existing == null)
                     return NotFound("Prescription not found");
 
-                PrescriptionMapper.UpdateEntity(existing, dto);
+                PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
 
-                await _helper.HandleMissingMedicines(existing, dto);
+                await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
 
-                await _repository.UpdateAsync(existing);
+                await _repository.UpdateAsync(existing);        //Save changes
                 return Ok(existing);
             }
             catch (Exception ex)
