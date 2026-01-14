@@ -436,5 +436,37 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.SuppliersController",
+    "Method": "Deactivate",
+    "RelativePath": "api/Suppliers/{id}/deactivate",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "PharmacyManagmentSystem.Controllers.SuppliersController",
+    "Method": "Reactivate",
+    "RelativePath": "api/Suppliers/{id}/reactivate",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   }
 ]

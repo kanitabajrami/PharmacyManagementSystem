@@ -9,11 +9,10 @@ namespace PharmacyManagmentSystem.Helpers
     {
         public static Supplier ToEntity(SupplierDto dto) => new Supplier
         {
-            Name=dto.Name,
+            Name = dto.Name,
             Phone = dto.Phone,
-            Email = dto.Email,
-            IsActive =dto.IsActive,
-    };
+            Email = dto.Email
+        };
 
         public static SupplierResponseDto ToResponseDto(Supplier s) => new SupplierResponseDto
         {
@@ -29,8 +28,7 @@ namespace PharmacyManagmentSystem.Helpers
             entity.Name = dto.Name;
             entity.Phone = dto.Phone;
             entity.Email = dto.Email;
-            entity.IsActive = dto.IsActive;
         }
 
-    }
+}
 }

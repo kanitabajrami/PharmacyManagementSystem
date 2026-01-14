@@ -31,6 +31,9 @@ namespace PharmacyManagmentSystem.Models
         public ICollection<InvoiceItem> InvoiceItems { get; set; }      // Medicine can appear in many invoices
         public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }        // Many-to-many: medicine can be in many prescriptions
 
-
+        internal bool Any()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

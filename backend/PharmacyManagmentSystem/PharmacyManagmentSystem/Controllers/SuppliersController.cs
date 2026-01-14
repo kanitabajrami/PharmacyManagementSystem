@@ -36,48 +36,90 @@ namespace PharmacyManagmentSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SupplierDto dto)
         {
-           
-            var supplier= SupplierMapper.ToEntity(dto);
+            try
+            {
+                var supplier = SupplierMapper.ToEntity(dto);
 
-            await _supplierRepository.AddAsync (supplier);
+                await _supplierRepository.AddAsync(supplier);
 
-            var created = await _supplierRepository.GetByIdAsync(supplier.Id);
-            if (created == null) return StatusCode(500, "Supplier saved but could not be loaded.");
+                var created = await _supplierRepository.GetByIdAsync(supplier.Id);
+                if (created == null) return StatusCode(500, "Supplier saved but could not be loaded.");
 
-
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, SupplierMapper.ToResponseDto(created));
+                return CreatedAtAction(nameof(GetById), new { id = created.Id }, SupplierMapper.ToResponseDto(created));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
+        
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SupplierDto dto)
         {
-            var supplier = await _supplierRepository.GetByIdAsync(id);
-            if (supplier == null) return NotFound();
+            try
+            {
+                var supplier = await _supplierRepository.GetByIdAsync(id);
+                if (supplier == null) return NotFound("Supplier not found.");
 
-            SupplierMapper.UpdateEntity(supplier,dto);
+                SupplierMapper.UpdateEntity(supplier, dto);
 
-            await _supplierRepository.UpdateAsync(supplier);
+                await _supplierRepository.UpdateAsync(supplier);
 
-            var updated = await _supplierRepository.GetByIdAsync(id);
-            if (updated == null) return StatusCode(500, "Supplier updated but could not be loaded.");
+                var updated = await _supplierRepository.GetByIdAsync(id);
+                if (updated == null) return StatusCode(500, "Supplier updated but could not be loaded.");
 
-            return Ok(SupplierMapper.ToResponseDto(updated));
+                return Ok(SupplierMapper.ToResponseDto(updated));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
 
         }
 
+        [HttpPut("{id:int}/reactivate")]
+        public async Task<IActionResult> Reactivate(int id)
+        {
+            try
+            {
+                await _supplierRepository.ReactivateAsync(id);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("{id:int}/deactivate")]
+        public async Task<IActionResult> Deactivate(int id)
+        {
+            try
+            {
+                await _supplierRepository.DeactivateAsync(id);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        //only admin can delete supplier
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var supplier= await _supplierRepository.GetByIdAsync(id);
-
-            if (supplier == null) return NotFound($"Supplier with id {id} not found.");
-
-            if (supplier.Medicines.Any())
-                throw new ArgumentException("Cannot delete supplier because it has medicines.");
-
-
-            await _supplierRepository.DeleteAsync(id);
-            return NoContent();
+            try
+            {
+                await _supplierRepository.DeleteAsync(id);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
         }
     }
