@@ -2,6 +2,12 @@
 
 namespace PharmacyManagmentSystem.Models
 {
+    public enum PrescriptionStatus
+    {
+        Pending,    // Medicine not available
+        Ready,      // Medicine available
+        Dispensed   // Patient already recieved the medicine
+    }
     public class Prescription
     {
         public int Id { get; set; }
@@ -18,6 +24,7 @@ namespace PharmacyManagmentSystem.Models
         [Required]
 
         public DateTime DateIssued { get; set; } = DateTime.UtcNow;
+        public PrescriptionStatus Status { get; set; } = PrescriptionStatus.Pending;
 
         public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }     // Many-to-many: prescription contains multiple medicines
 

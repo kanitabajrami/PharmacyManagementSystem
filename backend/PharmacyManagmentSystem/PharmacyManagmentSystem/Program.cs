@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using PharmacyManagmentSystem.Data;
+using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Repositories;
 
 namespace PharmacyManagmentSystem
@@ -28,6 +29,7 @@ namespace PharmacyManagmentSystem
             builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+            builder.Services.AddScoped<PrescriptionHelper>();
 
             var app = builder.Build();
 
