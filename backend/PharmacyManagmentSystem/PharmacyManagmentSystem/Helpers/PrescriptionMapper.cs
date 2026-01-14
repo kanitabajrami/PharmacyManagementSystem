@@ -6,7 +6,7 @@ namespace PharmacyManagmentSystem.Helpers
     public class PrescriptionMapper
     {
         // This is used for POST
-        public static Prescription ToEntity (PrescriptionDto dto)
+        public static Prescription ToEntity(PrescriptionDto dto)
         {
             return new Prescription
             {
@@ -40,6 +40,26 @@ namespace PharmacyManagmentSystem.Helpers
                     Quantity = m.Quantity
                 });
             }
+        }
+
+        // This is used for GET and API responses
+        public static PrescriptionResponseDto toDto(Prescription entity)
+        {
+            return new PrescriptionResponseDto
+            {
+                Id = entity.Id,
+                PatientId = entity.PatientId,
+                PatientName = entity.PatientName,
+                DoctorName = entity.DoctorName,
+                DateIssued = entity.DateIssued,
+                Status = entity.Status.ToString(),
+                Medicines = entity.PrescriptionMedicines
+                                .Select(pm => new PrescriptionMedicineCreateDto
+                                {
+                                    MedicineId = pm.MedicineId,
+                                    Quantity = pm.Quantity
+                                }).ToList()
+            };
         }
     }
 }

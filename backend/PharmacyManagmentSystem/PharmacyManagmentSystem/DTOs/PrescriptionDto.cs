@@ -23,4 +23,15 @@ namespace PharmacyManagmentSystem.DTOs
         [Required]
         public int Quantity { get; set; }
     }
+
+    public class PrescriptionResponseDto
+    {
+        public int Id { get; set; }
+        public string PatientId { get; set; }
+        public string PatientName { get; set; }
+        public string DoctorName { get; set; }
+        public DateTime DateIssued { get; set; }
+        public string Status { get; set; }
+        public List<PrescriptionMedicineCreateDto> Medicines { get; set; }
+    }
 }

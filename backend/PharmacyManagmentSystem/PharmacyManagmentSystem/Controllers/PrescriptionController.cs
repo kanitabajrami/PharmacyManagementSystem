@@ -25,7 +25,7 @@ namespace PharmacyManagmentSystem.Controllers
         public async Task<IActionResult> GetAll()
         {
             var prescriptions = await _repository.GetAllAsync();
-            return Ok(prescriptions);
+            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
         }
 
         // GET: api/Prescription/{id}
@@ -35,7 +35,7 @@ namespace PharmacyManagmentSystem.Controllers
             var prescription = await _repository.GetByIdAsync(id);
             if (prescription == null) 
                 return NotFound("Prescription not found");
-            return Ok(prescription);
+            return Ok(PrescriptionMapper.toDto(prescription));
         }
 
         // POST: api/Prescription
@@ -52,7 +52,7 @@ namespace PharmacyManagmentSystem.Controllers
                 await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
 
                 await _repository.AddAsync(prescription);       // Save changes
-                return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, prescription);
+                return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, PrescriptionMapper.toDto(prescription));
             }
             catch (Exception ex)
             {
@@ -77,7 +77,7 @@ namespace PharmacyManagmentSystem.Controllers
                 await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
 
                 await _repository.UpdateAsync(existing);        //Save changes
-                return Ok(existing);
+                return Ok(PrescriptionMapper.toDto(existing));
             }
             catch (Exception ex)
             {
@@ -98,7 +98,7 @@ namespace PharmacyManagmentSystem.Controllers
         public async Task<IActionResult> GetByPatient(string patientId)
         {
             var prescriptions = await _repository.GetByPatientAsync(patientId);
-            return Ok(prescriptions);
+            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
         }
 
         // GET: api/Prescription/doctor/{doctorName}
@@ -106,7 +106,7 @@ namespace PharmacyManagmentSystem.Controllers
         public async Task<IActionResult> GetByDoctor(string doctorName)
         {
             var prescriptions = await _repository.GetByDoctorAsync(doctorName);
-            return Ok(prescriptions);
+            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
         }
 
         //// GET: api/Prescription/expired
