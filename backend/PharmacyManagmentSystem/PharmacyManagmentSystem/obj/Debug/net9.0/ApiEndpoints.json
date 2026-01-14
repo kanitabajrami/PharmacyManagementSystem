@@ -1,8 +1,8 @@
 [
   {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoicesController",
     "Method": "GetAll",
-    "RelativePath": "api/Invoice",
+    "RelativePath": "api/Invoices",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -10,25 +10,25 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoicesController",
     "Method": "Create",
-    "RelativePath": "api/Invoice",
+    "RelativePath": "api/Invoices",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "invoice",
-        "Type": "PharmacyManagmentSystem.Models.Invoice",
+        "Name": "dto",
+        "Type": "PharmacyManagmentSystem.DTOs.CreateInvoiceDto",
         "IsRequired": true
       }
     ],
     "ReturnTypes": []
   },
   {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoicesController",
     "Method": "GetById",
-    "RelativePath": "api/Invoice/{id}",
+    "RelativePath": "api/Invoices/{id}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -42,46 +42,9 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
-    "Method": "Update",
-    "RelativePath": "api/Invoice/{id}",
-    "HttpMethod": "PUT",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      },
-      {
-        "Name": "invoice",
-        "Type": "PharmacyManagmentSystem.Models.Invoice",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
-    "Method": "Delete",
-    "RelativePath": "api/Invoice/{id}",
-    "HttpMethod": "DELETE",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoicesController",
     "Method": "GetByDateRange",
-    "RelativePath": "api/Invoice/range",
+    "RelativePath": "api/Invoices/range",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -100,9 +63,9 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoiceController",
+    "ContainingType": "PharmacyManagmentSystem.Controllers.InvoicesController",
     "Method": "GetByUser",
-    "RelativePath": "api/Invoice/user/{userId}",
+    "RelativePath": "api/Invoices/user/{userId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

@@ -7,7 +7,6 @@ namespace PharmacyManagmentSystem.Repositories
         Task<IEnumerable<Invoice>> GetAllAsync();
         Task<Invoice?> GetByIdAsync(int id);
         Task AddAsync(Invoice invoice);
-        Task UpdateAsync(Invoice invoice);
         Task DeleteAsync(int id);
 
         Task<IEnumerable<Invoice>> GetByUserAsync(int id);

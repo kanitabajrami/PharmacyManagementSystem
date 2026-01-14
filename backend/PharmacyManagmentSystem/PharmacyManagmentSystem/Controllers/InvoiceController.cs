@@ -1,86 +1,170 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PharmacyManagmentSystem.Data;
+using PharmacyManagmentSystem.DTOs;
+using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
 using PharmacyManagmentSystem.Repositories;
 
 namespace PharmacyManagmentSystem.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    public class InvoiceController : ControllerBase
+    [ApiController]
+    public class InvoicesController : ControllerBase
     {
-        private readonly IInvoiceRepository _repository;
+        private readonly ApplicationDbContext _db;
+        private readonly IInvoiceRepository _invoiceRepo;
 
-        public InvoiceController(IInvoiceRepository repository)
+        public InvoicesController(ApplicationDbContext db, IInvoiceRepository invoiceRepo)
         {
-            _repository = repository;
+            _db = db;
+            _invoiceRepo = invoiceRepo;
         }
 
-        // Get: api/Invoice
+        // GET: api/invoices
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var invoices = await _repository.GetAllAsync();
-            return Ok(invoices);
+            var invoices = await _invoiceRepo.GetAllAsync();
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
 
-        // GET: api/Invoice/{id}
-        [HttpGet("{id}")]
+        // GET: api/invoices/5
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var invoice = await _repository.GetByIdAsync(id);
-            if (invoice == null) return NotFound("Invoice not found");
-
-            return Ok(invoice);
+            var invoice = await _invoiceRepo.GetByIdAsync(id);
+            if (invoice == null) return NotFound($"Invoice with id {id} not found.");
+            return Ok(InvoiceMapper.ToResponseDto(invoice));
         }
 
-        // POST: api/Invoice
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Invoice invoice)
-        {
-            await _repository.AddAsync(invoice);
-            return CreatedAtAction(nameof(GetById), new {id = invoice.Id}, invoice);
-        }
-
-        // PUT: api/Invoice/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Invoice invoice)
-        {
-            if (id != invoice.Id) return BadRequest("Invoice id not found");
-            
-            await _repository.UpdateAsync(invoice);
-            return Ok(invoice);
-        }
-
-        // DELETE: api/Invoice/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            await _repository.DeleteAsync(id);
-            return NoContent();
-        }
-
-        // GET: api/Invoice/user/{userId}
-        [HttpGet("user/{userId}")]
+        // GET: api/invoices/user/3
+        [HttpGet("user/{userId:int}")]
         public async Task<IActionResult> GetByUser(int userId)
         {
-            var invoices = await _repository.GetByUserAsync(userId);
-            return Ok(invoices);
+            var invoices = await _invoiceRepo.GetByUserAsync(userId);
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
 
-        // GET: api/Invoice/range?start=2026-01-01&end=2026-01-31
+        // GET: api/invoices/range?start=2026-01-01&end=2026-01-14
         [HttpGet("range")]
-        public async Task<IActionResult> GetByDateRange(DateTime start, DateTime end)
+        public async Task<IActionResult> GetByDateRange([FromQuery] DateTime start, [FromQuery] DateTime end)
         {
-            var invoices = await _repository.GetByDateRangeAsync(start, end);
-            return Ok(invoices);
+            if (start > end) return BadRequest("Start date must be before end date.");
+
+            var invoices = await _invoiceRepo.GetByDateRangeAsync(start, end);
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
 
-        //// GET: api/Invoice/{id}/total
-        //[HttpGet("{id}/total")]
-        //public async Task<IActionResult> GetTotal(int id)
-        //{
-        //    var total = await _repository.GetTotalAmountAsync(id);
-        //    return Ok(total);
-        //}
+        // POST: api/invoices
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateInvoiceDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // 1) Validate user exists
+            var userExists = await _db.Users.AnyAsync(u => u.Id == dto.UserId);
+            if (!userExists) return NotFound($"User with id {dto.UserId} not found.");
+
+            // 2) Load medicines in one query
+            var medicineIds = dto.Items.Select(i => i.MedicineId).Distinct().ToList();
+            var medicines = await _db.Medicines
+                .Where(m => medicineIds.Contains(m.Id))
+                .ToListAsync();
+
+            if (medicines.Count != medicineIds.Count)
+                return BadRequest("One or more medicines do not exist.");
+
+            // 3) If prescription provided, validate it
+            Prescription? prescription = null;
+
+            if (dto.PrescriptionId.HasValue)
+            {
+                prescription = await _db.Prescriptions
+                    .Include(p => p.PrescriptionMedicines)
+                    .FirstOrDefaultAsync(p => p.Id == dto.PrescriptionId.Value);
+
+                if (prescription == null)
+                    return NotFound($"Prescription with id {dto.PrescriptionId.Value} not found.");
+
+                if (prescription.Status == PrescriptionStatus.Dispensed)
+                    return BadRequest("Prescription is already dispensed.");
+
+                // Allowed quantities (MedicineId -> Quantity allowed)
+                var allowed = prescription.PrescriptionMedicines
+                    .ToDictionary(x => x.MedicineId, x => x.Quantity);
+
+                foreach (var it in dto.Items)
+                {
+                    if (!allowed.ContainsKey(it.MedicineId))
+                        return BadRequest($"MedicineId {it.MedicineId} is not included in this prescription.");
+
+                    if (it.Quantity > allowed[it.MedicineId])
+                        return BadRequest($"Quantity for MedicineId {it.MedicineId} exceeds prescription allowed amount.");
+                }
+            }
+
+            // 4) Build invoice entity (server-side prices/totals)
+            var invoice = new Invoice
+            {
+                CustomerName = dto.CustomerName,
+                UserId = dto.UserId,
+                PrescriptionId = dto.PrescriptionId,
+                DateCreated = DateTime.UtcNow
+            };
+
+            // 5) Transaction: stock update + invoice save + prescription update
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                foreach (var it in dto.Items)
+                {
+                    var med = medicines.First(m => m.Id == it.MedicineId);
+
+                    // Stock is Medicine.Quantity
+                    if (med.Quantity < it.Quantity)
+                        return BadRequest($"Not enough stock for '{med.Name}'. Available: {med.Quantity}");
+
+                    // reduce stock
+                    med.Quantity -= it.Quantity;
+
+                    var unitPrice = med.Price;
+
+                    invoice.InvoiceItems.Add(new InvoiceItem
+                    {
+                        MedicineId = med.Id,
+                        Quantity = it.Quantity,
+                        UnitPrice = unitPrice,
+                        LineTotal = unitPrice * it.Quantity
+                    });
+                }
+
+                invoice.TotalAmount = invoice.InvoiceItems.Sum(x => x.LineTotal);
+
+                _db.Invoices.Add(invoice);
+                await _db.SaveChangesAsync();
+
+                if (prescription != null)
+                {
+                    prescription.Status = PrescriptionStatus.Dispensed;
+                    await _db.SaveChangesAsync();
+                }
+
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+
+            // Reload with includes so mapper has User + Medicine names
+            var created = await _db.Invoices
+                .Include(i => i.User)
+                .Include(i => i.InvoiceItems).ThenInclude(ii => ii.Medicine)
+                .FirstAsync(i => i.Id == invoice.Id);
+
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, InvoiceMapper.ToResponseDto(created));
+        }
     }
 }

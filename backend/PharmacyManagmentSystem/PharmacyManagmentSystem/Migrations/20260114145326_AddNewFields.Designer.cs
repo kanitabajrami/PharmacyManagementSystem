@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PharmacyManagmentSystem.Data;
@@ -11,9 +12,11 @@ using PharmacyManagmentSystem.Data;
 namespace PharmacyManagmentSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260114145326_AddNewFields")]
+    partial class AddNewFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -231,13 +234,12 @@ namespace PharmacyManagmentSystem.Migrations
                 {
                     b.HasOne("PharmacyManagmentSystem.Models.Prescription", "Prescription")
                         .WithMany()
-                        .HasForeignKey("PrescriptionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("PrescriptionId");
 
                     b.HasOne("PharmacyManagmentSystem.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Prescription");

@@ -49,6 +49,21 @@ namespace PharmacyManagmentSystem.Data
                 .HasForeignKey(ii => ii.MedicineId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Invoice (many) -> (1) User
+            modelBuilder.Entity<Invoice>()
+                .HasOne(i => i.User)
+                .WithMany() // or .WithMany(u => u.Invoices) if you add that collection in User
+                .HasForeignKey(i => i.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Invoice (many) -> (0/1) Prescription (optional link)
+            modelBuilder.Entity<Invoice>()
+                .HasOne(i => i.Prescription)
+                .WithMany()
+                .HasForeignKey(i => i.PrescriptionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+
             // PrescriptionMedicine (join table)
             // Composite key: (PrescriptionId, MedicineId)
             modelBuilder.Entity<PrescriptionMedicine>()
