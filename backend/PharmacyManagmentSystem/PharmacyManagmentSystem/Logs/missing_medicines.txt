@@ -1,2 +1,5 @@
 [1/13/2026 11:32:29 PM] Patient: patient2, Doctor: doctor1, MedicineId: 1, Quantity: 2
 [1/13/2026 11:33:41 PM] Patient: patientttt2, Doctor: doctor1, MedicineId: 2, Quantity: 3
+[1/14/2026 2:28:04 PM] Patient: patient3, Doctor: doctor2, MedicineId: 3, Quantity: 2
+[1/14/2026 2:58:55 PM] Patient: try, Doctor: try, MedicineId: 10, Quantity: 1
+[1/14/2026 3:06:17 PM] Patient: patientsomething, Doctor: doctor3, MedicineId: 5, Quantity: 2
