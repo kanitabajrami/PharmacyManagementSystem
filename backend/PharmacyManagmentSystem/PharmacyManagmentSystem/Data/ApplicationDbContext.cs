@@ -86,5 +86,10 @@ namespace PharmacyManagmentSystem.Data
                 .Property(pm => pm.Quantity)
                 .IsRequired();
         }
+
+        internal async Task SaveChangesAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

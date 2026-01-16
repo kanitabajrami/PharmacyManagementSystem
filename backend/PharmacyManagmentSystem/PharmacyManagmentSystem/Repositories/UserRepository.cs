@@ -49,7 +49,6 @@ namespace PharmacyManagmentSystem.Repositories
         {
             return await _dbcontext.Users.AnyAsync(u=>u.Username==username);
         }
-
         
         public async Task UpdateRoleAsync(int userId, string role)
         {

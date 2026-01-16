@@ -122,4 +122,3 @@ C:\Users\User8768\Documents\dotnet\PharmacyManagementSystem\backend\PharmacyMana
 C:\Users\User8768\Documents\dotnet\PharmacyManagementSystem\backend\PharmacyManagmentSystem\PharmacyManagmentSystem\obj\Debug\net9.0\PharmacyManagmentSystem.pdb
 C:\Users\User8768\Documents\dotnet\PharmacyManagementSystem\backend\PharmacyManagmentSystem\PharmacyManagmentSystem\obj\Debug\net9.0\PharmacyManagmentSystem.genruntimeconfig.cache
 C:\Users\User8768\Documents\dotnet\PharmacyManagementSystem\backend\PharmacyManagmentSystem\PharmacyManagmentSystem\obj\Debug\net9.0\ref\PharmacyManagmentSystem.dll
-C:\Users\User8768\Documents\dotnet\PharmacyManagementSystem\backend\PharmacyManagmentSystem\PharmacyManagmentSystem\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
