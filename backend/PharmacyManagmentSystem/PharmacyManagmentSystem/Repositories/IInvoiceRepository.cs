@@ -9,7 +9,7 @@ namespace PharmacyManagmentSystem.Repositories
         Task AddAsync(Invoice invoice);
         Task DeleteAsync(int id);
 
-        Task<IEnumerable<Invoice>> GetByUserAsync(int id);
+        Task<IEnumerable<Invoice>> GetByUserAsync(string id);
         Task<IEnumerable<Invoice>> GetByDateRangeAsync(DateTime start, DateTime end);
         //Task<decimal> GetTotalAmountAsync(int id);   //mund te largohet
     }

@@ -13,7 +13,7 @@ namespace PharmacyManagmentSystem.Helpers
             TotalAmount = inv.TotalAmount,
 
             UserId = inv.UserId,
-            UserName = inv.User != null ? (inv.User.Username ?? "") : "",
+            UserName = inv.User != null ? (inv.User.UserName ?? "") : "",
 
             PrescriptionId = inv.PrescriptionId,
 
@@ -39,7 +39,7 @@ namespace PharmacyManagmentSystem.Helpers
             CustomerName = inv.CustomerName,
             TotalAmount = inv.TotalAmount,
             UserId = inv.UserId,
-            UserName = inv.User != null ? (inv.User.Username ?? "") : "",
+            UserName = inv.User != null ? (inv.User.UserName ?? "") : "",
             PrescriptionId = inv.PrescriptionId,
             ItemsCount = inv.InvoiceItems?.Count ?? 0
         };

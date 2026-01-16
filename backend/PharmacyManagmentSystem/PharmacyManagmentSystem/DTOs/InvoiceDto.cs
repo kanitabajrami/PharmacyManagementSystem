@@ -7,9 +7,6 @@ namespace PharmacyManagmentSystem.DTOs
         {
             public string? CustomerName { get; set; }
 
-            [Required]
-            public int UserId { get; set; }
-
             public int? PrescriptionId { get; set; }
 
             [Required]
@@ -35,7 +32,7 @@ namespace PharmacyManagmentSystem.DTOs
             public string? CustomerName { get; set; }
             public decimal TotalAmount { get; set; }
 
-            public int UserId { get; set; }
+            public string UserId { get; set; } = default!;
             public string UserName { get; set; } = "";
 
             public int? PrescriptionId { get; set; }
@@ -64,7 +61,7 @@ namespace PharmacyManagmentSystem.DTOs
             public string? CustomerName { get; set; }
             public decimal TotalAmount { get; set; }
 
-            public int UserId { get; set; }
+            public string UserId { get; set; } = default!;
             public string UserName { get; set; } = "";
 
             public int? PrescriptionId { get; set; }

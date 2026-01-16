@@ -1,17 +1,25 @@
-﻿namespace PharmacyManagmentSystem.DTOs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace PharmacyManagmentSystem.DTOs
 {
     public class AuthDto
     {
         public class RegisterDto
         {
-            public string Email { get; set; }
-            public string Password { get; set; }
+            [Required]
+            public string UserName { get; set; } = default!;
+            [Required, EmailAddress] 
+            public string Email { get; set; } = default!;
+            [Required, MinLength(6)] 
+            public string Password { get; set; } = default!;
         }
 
         public class LoginDto
         {
-            public string Email { get; set; }
-            public string Password { get; set; }
+            [Required] 
+            public string UserNameOrEmail { get; set; } = default!;
+            [Required] 
+            public string Password { get; set; } = default!;
         }
     }
 }

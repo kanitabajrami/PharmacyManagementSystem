@@ -14,8 +14,8 @@ public class Invoice
 
 
     [Required]
-    public int UserId { get; set; } 
-    public User User { get; set; } 
+    public string UserId { get; set; } = default!;
+    public ApplicationUser User { get; set; } = default!;
 
     // Optional: link prescription
     public int? PrescriptionId { get; set; }

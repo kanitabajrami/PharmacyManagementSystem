@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PharmacyManagmentSystem.Models;
+
 
 namespace PharmacyManagmentSystem.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -11,7 +13,6 @@ namespace PharmacyManagmentSystem.Data
         }
 
         // Tables
-        public DbSet<User> Users { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<Medicine> Medicines { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
@@ -49,10 +50,11 @@ namespace PharmacyManagmentSystem.Data
                 .HasForeignKey(ii => ii.MedicineId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
             // Invoice (many) -> (1) User
             modelBuilder.Entity<Invoice>()
                 .HasOne(i => i.User)
-                .WithMany() // or .WithMany(u => u.Invoices) if you add that collection in User
+                .WithMany()
                 .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -87,9 +89,5 @@ namespace PharmacyManagmentSystem.Data
                 .IsRequired();
         }
 
-        internal async Task SaveChangesAsync()
-        {
-            throw new NotImplementedException();
-        }
     }
 }

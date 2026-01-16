@@ -51,7 +51,7 @@ namespace PharmacyManagmentSystem.Repositories
                 await _dbcontext.SaveChangesAsync();
             }
         }
-        public async Task<IEnumerable<Invoice>> GetByUserAsync(int id)
+        public async Task<IEnumerable<Invoice>> GetByUserAsync(string id)
         {
             // Get the invoices created by a specific user
             return await _dbcontext.Invoices.Include(i => i.InvoiceItems).ThenInclude(ii => ii.Medicine).Where(i => i.UserId == id).ToListAsync();
