@@ -13,7 +13,7 @@ namespace PharmacyManagmentSystem.DTOs
         [Range(0,double.MaxValue)]
         public decimal Price { get; set; }  
 
-        [Range(0,int.MaxValue)]
+        [Range(0,2000)]
         public int Quantity { get; set; }
 
 
