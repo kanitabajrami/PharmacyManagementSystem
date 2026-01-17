@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PharmacyManagmentSystem.DTOs;
 using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
@@ -22,6 +23,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         // GET: api/Prescription
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             var prescriptions = await _repository.GetAllAsync();
@@ -30,6 +32,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         // GET: api/Prescription/{id}
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var prescription = await _repository.GetByIdAsync(id);
@@ -40,6 +43,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         // POST: api/Prescription
         [HttpPost]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
         {
             if (!ModelState.IsValid) 
@@ -61,32 +65,34 @@ namespace PharmacyManagmentSystem.Controllers
             }
 
         // PUT: api/Prescription/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
-        {
-            if(!ModelState.IsValid)
-                return BadRequest(ModelState);
-            try
-            {
-                var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
-                if (existing == null)
-                    return NotFound("Prescription not found");
+        //[HttpPut("{id}")]
+        
+        //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
+        //{
+        //    if(!ModelState.IsValid)
+        //        return BadRequest(ModelState);
+        //    try
+        //    {
+        //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
+        //        if (existing == null)
+        //            return NotFound("Prescription not found");
 
-                PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
+        //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
 
-                await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
+        //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
 
-                await _repository.UpdateAsync(existing);        //Save changes
-                return Ok(PrescriptionMapper.toDto(existing));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Failed to update prescription: {ex.Message}");
-            }
-        }
+        //        await _repository.UpdateAsync(existing);        //Save changes
+        //        return Ok(PrescriptionMapper.toDto(existing));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
+        //    }
+        //}
 
         // DELETE: api/Prescription/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             await _repository.DeleteAsync(id);
@@ -95,6 +101,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         // GET: api/Prescription/patient/{patientId}
         [HttpGet("patient/{patientId}")]
+        [Authorize(Roles ="User")]
         public async Task<IActionResult> GetByPatient(string patientId)
         {
             var prescriptions = await _repository.GetByPatientAsync(patientId);
@@ -103,6 +110,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         // GET: api/Prescription/doctor/{doctorName}
         [HttpGet("doctor/{doctorName}")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> GetByDoctor(string doctorName)
         {
             var prescriptions = await _repository.GetByDoctorAsync(doctorName);

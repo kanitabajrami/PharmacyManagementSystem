@@ -25,6 +25,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             var invoices = await _invoiceRepo.GetAllAsync();
@@ -32,6 +33,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var invoice = await _invoiceRepo.GetByIdAsync(id);
@@ -39,15 +41,18 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(InvoiceMapper.ToResponseDto(invoice));
         }
 
-        // ✅ removed :int
+
         [HttpGet("user/{userId}")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> GetByUser(string userId)
         {
             var invoices = await _invoiceRepo.GetByUserAsync(userId);
             return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
-        [Authorize(Roles = "User")]
+
+        
         [HttpGet("range")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetByDateRange([FromQuery] DateTime start, [FromQuery] DateTime end)
         {
             if (start > end) return BadRequest("Start date must be before end date.");
@@ -56,8 +61,8 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
 
-        [Authorize(Roles = "Admin")]
         [HttpPost]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> Create([FromBody] CreateInvoiceDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -68,10 +73,6 @@ namespace PharmacyManagmentSystem.Controllers
 
             var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
             if (!userExists) return Unauthorized("Authenticated user does not exist.");
-
-
-
-
 
             // 2) Load medicines in one query
             var medicineIds = dto.Items.Select(i => i.MedicineId).Distinct().ToList();
@@ -85,21 +86,21 @@ namespace PharmacyManagmentSystem.Controllers
             // 3) If prescription provided, validate it
             Prescription? prescription = null;
 
-        if (dto.PrescriptionId.HasValue)
-        {
-            prescription = await _db.Prescriptions
-                .Include(p => p.PrescriptionMedicines)
-                .FirstOrDefaultAsync(p => p.Id == dto.PrescriptionId.Value);
+            if (dto.PrescriptionId.HasValue)
+            {
+                prescription = await _db.Prescriptions
+                    .Include(p => p.PrescriptionMedicines)
+                    .FirstOrDefaultAsync(p => p.Id == dto.PrescriptionId.Value);
 
-            if (prescription == null)
-                return NotFound($"Prescription with id {dto.PrescriptionId.Value} not found.");
+                if (prescription == null)
+                    return NotFound($"Prescription with id {dto.PrescriptionId.Value} not found.");
 
-            if (prescription.Status == PrescriptionStatus.Dispensed)
-                return BadRequest("Prescription is already dispensed.");
+                if (prescription.Status == PrescriptionStatus.Dispensed)
+                    return BadRequest("Prescription is already dispensed.");
 
-            // Allowed quantities (MedicineId -> Quantity allowed)
-            var allowed = prescription.PrescriptionMedicines
-                .ToDictionary(x => x.MedicineId, x => x.Quantity);
+                // Allowed quantities (MedicineId -> Quantity allowed)
+                var allowed = prescription.PrescriptionMedicines
+                    .ToDictionary(x => x.MedicineId, x => x.Quantity);
 
             foreach (var it in dto.Items)
             {

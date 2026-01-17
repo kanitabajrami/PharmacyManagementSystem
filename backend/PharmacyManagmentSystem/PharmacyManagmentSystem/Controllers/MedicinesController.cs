@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PharmacyManagmentSystem.DTOs;
 using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
@@ -21,6 +22,7 @@ namespace PharmacyManagmentSystem.Controllers
 
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             var medicines = await _repo.GetAllAsync();
@@ -28,6 +30,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var medicine = await _repo.GetByIdAsync(id);
@@ -37,6 +40,7 @@ namespace PharmacyManagmentSystem.Controllers
 
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> Create([FromBody] MedicineDto dto)
         {
 
@@ -62,6 +66,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize]
         public async Task<IActionResult> Update(int id, [FromBody] MedicineDto dto)
         {
             try
@@ -89,6 +94,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize (Roles="Admin")]
         public async Task<IActionResult>Delete(int id)
         {
                 var medicine = await _repo.GetByIdAsync(id);
@@ -102,6 +108,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet("search")]
+        [Authorize]
         public async Task<IActionResult>Search([FromQuery] string? name,[FromQuery] string? category)
         {
             var medicines= await _repo.SearchAsync(name, category);
@@ -109,6 +116,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet("low-stock")]
+        [Authorize]
         public async Task<IActionResult>LowStock([FromQuery] int threshold = 10)
         {
             var medicines=await _repo.GetLowStockAsync(threshold);
@@ -116,6 +124,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet("expiring-soon")]
+        [Authorize]
         public async Task<IActionResult> ExpiringSoon([FromQuery] int days = 30)
         {
             var expiring=await _repo.GetExpiringSoonAsync(days);

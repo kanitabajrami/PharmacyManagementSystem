@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PharmacyManagmentSystem.DTOs;
 using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
@@ -17,13 +18,16 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             var suppliers = await _supplierRepository.GetAllAsync();
             return Ok(suppliers.Select(SupplierMapper.ToResponseDto));
         }
 
+        
         [HttpGet("{id:int}")]
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var supplier=await _supplierRepository.GetByIdAsync(id);
@@ -34,6 +38,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] SupplierDto dto)
         {
             try
@@ -55,6 +60,7 @@ namespace PharmacyManagmentSystem.Controllers
         
 
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromBody] SupplierDto dto)
         {
             try
@@ -76,10 +82,10 @@ namespace PharmacyManagmentSystem.Controllers
                 return BadRequest(ex.Message);
             }
 
-
         }
 
         [HttpPut("{id:int}/reactivate")]
+        [Authorize]
         public async Task<IActionResult> Reactivate(int id)
         {
             try
@@ -94,6 +100,7 @@ namespace PharmacyManagmentSystem.Controllers
         }
 
         [HttpPut("{id:int}/deactivate")]
+        [Authorize]
         public async Task<IActionResult> Deactivate(int id)
         {
             try
@@ -109,6 +116,7 @@ namespace PharmacyManagmentSystem.Controllers
 
         //only admin can delete supplier
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             try
