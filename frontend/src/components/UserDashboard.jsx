@@ -1,3 +1,1078 @@
+// src/pages/UserDashboard.jsx
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+/**
+ * User Dashboard (Tailwind v4)
+ * Based on your controllers:
+ * - Medicines: GET all, search, low-stock, expiring-soon
+ * - Invoices: GET all (currently [Authorize]), GET by id, POST create (User)
+ * - Prescriptions: GET all/byId (Authorize), GET by patient/doctor (User)
+ * - Suppliers: GET all/byId (Authorize)
+ *
+ * NOTE: Your backend currently allows any authenticated user to GET all invoices/prescriptions.
+ * If you later add /api/invoices/me and /api/prescription/me, switch the endpoints here.
+ */
+
+const API_BASE = "https://localhost:7201";
+
+async function apiFetch(path, options = {}) {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!res.ok) {
+    throw new Error(data?.message || `Request failed (${res.status})`);
+  }
+
+  return data;
+}
+
+function get(obj, ...keys) {
+  for (const k of keys) {
+    if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+  }
+  return undefined;
+}
+
+function money(x) {
+  const n = Number(x || 0);
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
+}
+
+function parseRoles() {
+  try {
+    const raw = localStorage.getItem("roles");
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "string") return [parsed];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function decodeJwtName(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return (
+      payload?.name ||
+      payload?.unique_name ||
+      payload?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+      payload?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ||
+      "User"
+    );
+  } catch {
+    return "User";
+  }
+}
+
+const TABS = [
+  { id: "medicines", label: "Medicines" },
+  { id: "invoices", label: "Invoices" },
+  { id: "prescriptions", label: "Prescriptions" },
+  { id: "suppliers", label: "Suppliers" },
+];
+
 export default function UserDashboard() {
-  return <h1>Welcome User Dashboard!</h1>;
+  const navigate = useNavigate();
+
+  const [tab, setTab] = useState("medicines");
+  const [displayName, setDisplayName] = useState("User");
+  const roles = useMemo(() => parseRoles(), []);
+  const isAdmin = roles.includes("Admin");
+
+  // Global error
+  const [error, setError] = useState("");
+
+  // ===== Medicines state =====
+  const [medLoading, setMedLoading] = useState(true);
+  const [medicines, setMedicines] = useState([]);
+  const [medQueryName, setMedQueryName] = useState("");
+  const [medQueryCategory, setMedQueryCategory] = useState("");
+  const [inStockOnly, setInStockOnly] = useState(true);
+  const [sort, setSort] = useState("name_asc"); // name_asc | price_asc | price_desc
+  const [viewMode, setViewMode] = useState("all"); // all | low | expiring
+
+  // ===== Cart / Invoice create =====
+  const [cart, setCart] = useState([]); // {medicineId, name, price, qty}
+  const [customerName, setCustomerName] = useState("");
+  const [prescriptionId, setPrescriptionId] = useState(""); // optional
+  const cartTotal = useMemo(
+    () => cart.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 0), 0),
+    [cart]
+  );
+
+  // ===== Invoices state =====
+  const [invLoading, setInvLoading] = useState(true);
+  const [invoices, setInvoices] = useState([]);
+
+  // ===== Prescriptions state =====
+  const [rxLoading, setRxLoading] = useState(true);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [patientId, setPatientId] = useState("");
+  const [doctorName, setDoctorName] = useState("");
+
+  // ===== Suppliers state =====
+  const [supLoading, setSupLoading] = useState(true);
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+
+  function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("roles");
+    navigate("/login");
+  }
+
+  // ---------- LOADERS ----------
+  async function loadMedicinesAll() {
+    setMedLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/medicines");
+      setMedicines(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load medicines.");
+    } finally {
+      setMedLoading(false);
+    }
+  }
+
+  async function loadMedicinesLow() {
+    setMedLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/medicines/low-stock?threshold=10");
+      setMedicines(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load low stock medicines.");
+    } finally {
+      setMedLoading(false);
+    }
+  }
+
+  async function loadMedicinesExpiring() {
+    setMedLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/medicines/expiring-soon?days=30");
+      setMedicines(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load expiring medicines.");
+    } finally {
+      setMedLoading(false);
+    }
+  }
+
+  async function searchMedicines() {
+    setMedLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (medQueryName.trim()) params.set("name", medQueryName.trim());
+      if (medQueryCategory.trim()) params.set("category", medQueryCategory.trim());
+
+      const data = await apiFetch(`/api/medicines/search?${params.toString()}`);
+      setMedicines(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Search failed.");
+    } finally {
+      setMedLoading(false);
+    }
+  }
+
+  async function loadInvoices() {
+    setInvLoading(true);
+    setError("");
+    try {
+      // If you later create /api/invoices/me, switch to that:
+      // const data = await apiFetch("/api/invoices/me");
+      const data = await apiFetch("/api/invoices");
+      setInvoices(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load invoices.");
+    } finally {
+      setInvLoading(false);
+    }
+  }
+
+  async function loadPrescriptionsAll() {
+    setRxLoading(true);
+    setError("");
+    try {
+      // Your controller route is api/PrescriptionController -> "Prescription" in route:
+      // class name PrescriptionController + [Route("api/[controller]")] => /api/Prescription
+      const data = await apiFetch("/api/Prescription");
+      setPrescriptions(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load prescriptions.");
+    } finally {
+      setRxLoading(false);
+    }
+  }
+
+  async function loadPrescriptionsByPatient() {
+    if (!patientId.trim()) return;
+    setRxLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch(`/api/Prescription/patient/${encodeURIComponent(patientId.trim())}`);
+      setPrescriptions(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load prescriptions by patient.");
+    } finally {
+      setRxLoading(false);
+    }
+  }
+
+  async function loadPrescriptionsByDoctor() {
+    if (!doctorName.trim()) return;
+    setRxLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch(`/api/Prescription/doctor/${encodeURIComponent(doctorName.trim())}`);
+      setPrescriptions(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load prescriptions by doctor.");
+    } finally {
+      setRxLoading(false);
+    }
+  }
+
+  async function loadSuppliers() {
+    setSupLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/suppliers");
+      setSuppliers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message || "Failed to load suppliers.");
+    } finally {
+      setSupLoading(false);
+    }
+  }
+
+  // ---------- INIT ----------
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    setDisplayName(String(decodeJwtName(token)));
+
+    // Load everything once so tabs feel instant
+    loadMedicinesAll();
+    loadInvoices();
+    loadPrescriptionsAll();
+    loadSuppliers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---------- MEDICINES VIEW ----------
+  const medicinesView = useMemo(() => {
+    const list = [...medicines];
+
+    // optional stock filter (client-side)
+    const filtered = inStockOnly ? list.filter((m) => Number(get(m, "quantity", "Quantity") || 0) > 0) : list;
+
+    // sort
+    if (sort === "name_asc") {
+      filtered.sort((a, b) => String(get(a, "name", "Name") || "").localeCompare(String(get(b, "name", "Name") || "")));
+    } else if (sort === "price_asc") {
+      filtered.sort((a, b) => Number(get(a, "price", "Price") || 0) - Number(get(b, "price", "Price") || 0));
+    } else if (sort === "price_desc") {
+      filtered.sort((a, b) => Number(get(b, "price", "Price") || 0) - Number(get(a, "price", "Price") || 0));
+    }
+
+    return filtered;
+  }, [medicines, inStockOnly, sort]);
+
+  // ---------- CART ----------
+  function addToCart(m) {
+    const id = get(m, "id", "Id");
+    const name = get(m, "name", "Name") || "Medicine";
+    const price = Number(get(m, "price", "Price") || 0);
+    const stock = Number(get(m, "quantity", "Quantity") || 0);
+
+    if (!id || stock <= 0) return;
+
+    setCart((prev) => {
+      const existing = prev.find((x) => x.medicineId === id);
+      if (!existing) return [...prev, { medicineId: id, name, price, qty: 1 }];
+
+      const nextQty = Math.min(existing.qty + 1, stock);
+      return prev.map((x) => (x.medicineId === id ? { ...x, qty: nextQty } : x));
+    });
+  }
+
+  function setQty(medicineId, qty) {
+    setCart((prev) =>
+      prev
+        .map((x) => (x.medicineId === medicineId ? { ...x, qty } : x))
+        .filter((x) => x.qty > 0)
+    );
+  }
+
+  function removeItem(medicineId) {
+    setCart((prev) => prev.filter((x) => x.medicineId !== medicineId));
+  }
+
+  async function createInvoice() {
+    if (cart.length === 0) {
+      alert("Cart is empty.");
+      return;
+    }
+    if (!customerName.trim()) {
+      alert("Please enter customer name.");
+      return;
+    }
+
+    const payload = {
+      customerName: customerName.trim(),
+      items: cart.map((c) => ({ medicineId: c.medicineId, quantity: c.qty })),
+      ...(prescriptionId.trim() ? { prescriptionId: Number(prescriptionId) } : {}),
+    };
+
+    try {
+      await apiFetch("/api/invoices", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      alert("Invoice created!");
+      setCart([]);
+      setCustomerName("");
+      setPrescriptionId("");
+
+      // refresh meds + invoices
+      if (viewMode === "all") await loadMedicinesAll();
+      if (viewMode === "low") await loadMedicinesLow();
+      if (viewMode === "expiring") await loadMedicinesExpiring();
+      await loadInvoices();
+      setTab("invoices");
+    } catch (e) {
+      alert(e.message || "Failed to create invoice.");
+    }
+  }
+
+  // ---------- SUPPLIERS VIEW ----------
+  const suppliersView = useMemo(() => {
+    const q = supplierSearch.trim().toLowerCase();
+    if (!q) return suppliers;
+    return suppliers.filter((s) => {
+      const name = String(get(s, "name", "Name") || "").toLowerCase();
+      const contact = String(get(s, "contactInfo", "ContactInfo") || "").toLowerCase();
+      return name.includes(q) || contact.includes(q);
+    });
+  }, [suppliers, supplierSearch]);
+
+
+  async function deactivateSupplier(id) {
+  try {
+    await apiFetch(`/api/suppliers/${id}/deactivate`, { method: "PUT" });
+    await loadSuppliers(); // refresh list
+    alert("Supplier deactivated.");
+  } catch (e) {
+    alert(e.message || "Failed to deactivate supplier.");
+  }
+}
+
+async function reactivateSupplier(id) {
+  try {
+    await apiFetch(`/api/suppliers/${id}/reactivate`, { method: "PUT" });
+    await loadSuppliers(); // refresh list
+    alert("Supplier reactivated.");
+  } catch (e) {
+    alert(e.message || "Failed to reactivate supplier.");
+  }
+}
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <div className="sticky top-0 z-10 bg-white/85 backdrop-blur border-b">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-2xl bg-indigo-600 text-white grid place-items-center font-bold">
+              P
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900 leading-tight">Pharmacy</div>
+              <div className="text-xs text-gray-500 -mt-0.5">User dashboard</div>
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
+            <span className="text-gray-400">Hi,</span>
+            <span className="font-medium text-gray-900">{displayName}</span>
+            {isAdmin && (
+              <span className="ml-2 text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                Admin token
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={logout}
+            className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Error banner */}
+        {error && (
+          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                "h-10 px-4 rounded-xl text-sm font-medium border transition " +
+                (tab === t.id
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white hover:bg-gray-50")
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {tab === "medicines" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Medicines list */}
+            <div className="lg:col-span-2 bg-white rounded-3xl border shadow-sm">
+              <div className="p-5 border-b">
+                <div className="flex items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Medicines</h2>
+                    <p className="text-sm text-gray-500">
+                      Search, filter, and add to cart.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setViewMode("all");
+                        loadMedicinesAll();
+                      }}
+                      className={
+                        "px-3 h-9 rounded-xl text-sm font-medium border transition " +
+                        (viewMode === "all" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-50")
+                      }
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode("low");
+                        loadMedicinesLow();
+                      }}
+                      className={
+                        "px-3 h-9 rounded-xl text-sm font-medium border transition " +
+                        (viewMode === "low" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-50")
+                      }
+                    >
+                      Low stock
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode("expiring");
+                        loadMedicinesExpiring();
+                      }}
+                      className={
+                        "px-3 h-9 rounded-xl text-sm font-medium border transition " +
+                        (viewMode === "expiring"
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "bg-white hover:bg-gray-50")
+                      }
+                    >
+                      Expiring
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search controls */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    value={medQueryName}
+                    onChange={(e) => setMedQueryName(e.target.value)}
+                    placeholder="Search name…"
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+                  <input
+                    value={medQueryCategory}
+                    onChange={(e) => setMedQueryCategory(e.target.value)}
+                    placeholder="Category…"
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+                  <button
+                    onClick={() => {
+                      setViewMode("all"); // search is its own view, but we treat it as custom
+                      searchMedicines();
+                    }}
+                    className="h-10 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                  >
+                    Search
+                  </button>
+                </div>
+
+                {/* Filters */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-2 px-3 h-10 rounded-xl border text-sm bg-white">
+                    <input
+                      type="checkbox"
+                      checked={inStockOnly}
+                      onChange={(e) => setInStockOnly(e.target.checked)}
+                      className="accent-indigo-600"
+                    />
+                    In stock only
+                  </label>
+
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                    className="h-10 px-3 rounded-xl border text-sm bg-white outline-none
+                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  >
+                    <option value="name_asc">Name (A–Z)</option>
+                    <option value="price_asc">Price (low)</option>
+                    <option value="price_desc">Price (high)</option>
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      setMedQueryName("");
+                      setMedQueryCategory("");
+                      setViewMode("all");
+                      loadMedicinesAll();
+                    }}
+                    className="px-3 h-10 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-5">
+                {medLoading ? (
+                  <Skeleton rows={6} />
+                ) : medicinesView.length === 0 ? (
+                  <Empty title="No medicines found" text="Try different filters or search." />
+                ) : (
+                  <div className="space-y-3">
+                    {medicinesView.slice(0, 40).map((m) => (
+                      <MedicineRow key={get(m, "id", "Id")} med={m} onAdd={() => addToCart(m)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Cart / Create invoice */}
+            <div className="bg-white rounded-3xl border shadow-sm sticky top-[76px] h-fit">
+              <div className="p-5 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">Cart</h2>
+                <p className="text-sm text-gray-500">Create invoice (User role).</p>
+              </div>
+
+              <div className="p-5">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer name
+                </label>
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+
+                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">
+                  PrescriptionId (optional)
+                </label>
+                <input
+                  value={prescriptionId}
+                  onChange={(e) => setPrescriptionId(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+
+                <div className="mt-4">
+                  {cart.length === 0 ? (
+                    <div className="rounded-2xl border bg-gray-50 px-4 py-6 text-center">
+                      <div className="text-sm font-medium text-gray-900">Cart is empty</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Add medicines from the list.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {cart.map((it) => (
+                        <CartRow
+                          key={it.medicineId}
+                          item={it}
+                          onMinus={() => setQty(it.medicineId, Math.max(0, it.qty - 1))}
+                          onPlus={() => setQty(it.medicineId, it.qty + 1)}
+                          onRemove={() => removeItem(it.medicineId)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">Total</div>
+                  <div className="text-lg font-semibold text-gray-900">{money(cartTotal)}</div>
+                </div>
+
+                <button
+                  onClick={createInvoice}
+                  disabled={cart.length === 0}
+                  className="mt-4 w-full h-11 rounded-xl font-semibold text-white shadow
+                             bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99]
+                             disabled:opacity-60 disabled:cursor-not-allowed transition"
+                >
+                  Create invoice
+                </button>
+
+                <button
+                  onClick={() => setCart([])}
+                  disabled={cart.length === 0}
+                  className="mt-3 w-full h-11 rounded-xl font-semibold border bg-white hover:bg-gray-50 transition
+                             disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Clear cart
+                </button>
+
+                <div className="mt-4 text-xs text-gray-400">
+                  If you get 403 here, your token is not in role <span className="font-medium">User</span>.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "invoices" && (
+          <div className="bg-white rounded-3xl border shadow-sm">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
+                <p className="text-sm text-gray-500">
+                  Loaded from <span className="font-medium">GET /api/invoices</span>.
+                </p>
+              </div>
+              <button
+                onClick={loadInvoices}
+                className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="p-5">
+              {invLoading ? (
+                <Skeleton rows={6} />
+              ) : invoices.length === 0 ? (
+                <Empty title="No invoices" text="Create one from Medicines tab." />
+              ) : (
+                <div className="space-y-3">
+                  {invoices
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(get(b, "dateCreated", "DateCreated") || 0) -
+                        new Date(get(a, "dateCreated", "DateCreated") || 0)
+                    )
+                    .map((inv) => (
+                      <InvoiceRow key={get(inv, "id", "Id")} inv={inv} />
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === "prescriptions" && (
+          <div className="bg-white rounded-3xl border shadow-sm">
+            <div className="p-5 border-b">
+              <div className="flex items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Prescriptions</h2>
+                  <p className="text-sm text-gray-500">
+                    Search by patientId or doctorName (User endpoints).
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={loadPrescriptionsAll}
+                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={loadPrescriptionsByPatient}
+                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                  >
+                    By patient
+                  </button>
+                  <button
+                    onClick={loadPrescriptionsByDoctor}
+                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                  >
+                    By doctor
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  placeholder="patientId…"
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+                <input
+                  value={doctorName}
+                  onChange={(e) => setDoctorName(e.target.value)}
+                  placeholder="doctorName…"
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+              </div>
+            </div>
+
+            <div className="p-5">
+              {rxLoading ? (
+                <Skeleton rows={6} />
+              ) : prescriptions.length === 0 ? (
+                <Empty title="No prescriptions" text="Try patientId/doctorName." />
+              ) : (
+                <div className="space-y-3">
+                  {prescriptions.map((rx) => (
+                    <PrescriptionRow key={get(rx, "id", "Id")} rx={rx} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === "suppliers" && (
+          <div className="bg-white rounded-3xl border shadow-sm">
+            <div className="p-5 border-b flex items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
+                <p className="text-sm text-gray-500">
+                  Read-only list (GET endpoints).
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={loadSuppliers}
+                  className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5">
+              <input
+                value={supplierSearch}
+                onChange={(e) => setSupplierSearch(e.target.value)}
+                placeholder="Search supplier name/contact…"
+                className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                           focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 mb-4"
+              />
+
+             {supLoading ? (
+              <Skeleton rows={6} />
+            ) : suppliersView.length === 0 ? (
+              <Empty title="No suppliers" text="Try another search." />
+            ) : (
+              <div className="space-y-3">
+               {suppliersView.map((s) => (
+              <SupplierRow
+                key={get(s, "id", "Id")}
+                s={s}
+                onDeactivate={deactivateSupplier}
+                onReactivate={reactivateSupplier}
+              />
+            ))}   
+              </div>
+            )}
+
+              <div className="mt-4 text-xs text-gray-400">
+                Your backend currently allows any authenticated user to deactivate/reactivate suppliers.
+                I didn’t put those buttons here (safer UX).
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===================== UI PIECES ===================== */
+
+function MedicineRow({ med, onAdd }) {
+  const id = get(med, "id", "Id");
+  const name = get(med, "name", "Name") || "Medicine";
+  const category = get(med, "category", "Category");
+  const supplierName = get(med, "supplierName", "SupplierName");
+  const price = Number(get(med, "price", "Price") || 0);
+  const qty = Number(get(med, "quantity", "Quantity") || 0);
+
+  const stockLabel = qty <= 0 ? "Out" : qty <= 5 ? "Low" : "In";
+  const badge =
+    qty <= 0
+      ? "bg-red-50 text-red-700 border-red-200"
+      : qty <= 5
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+  return (
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <div className="font-semibold text-gray-900 truncate">{name}</div>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${badge}`}>
+            {stockLabel}
+          </span>
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {category ? `Category: ${category} • ` : ""}
+          {supplierName ? `Supplier: ${supplierName} • ` : ""}
+          Stock: {qty}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <div className="text-sm font-semibold text-gray-900">{money(price)}</div>
+          <div className="text-xs text-gray-400">per item</div>
+        </div>
+
+        <button
+          onClick={onAdd}
+          disabled={!id || qty <= 0}
+          className="px-3 h-10 rounded-xl text-sm font-semibold text-white
+                     bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CartRow({ item, onMinus, onPlus, onRemove }) {
+  return (
+    <div className="rounded-2xl border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium text-gray-900 truncate">{item.name}</div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            {money(item.price)} each
+          </div>
+        </div>
+
+        <button
+          onClick={onRemove}
+          className="text-xs px-2 py-1 rounded-lg border bg-white hover:bg-gray-50 transition"
+        >
+          Remove
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <div className="inline-flex items-center rounded-xl border overflow-hidden">
+          <button type="button" onClick={onMinus} className="h-9 w-9 grid place-items-center hover:bg-gray-50 transition">
+            −
+          </button>
+          <div className="h-9 w-12 grid place-items-center text-sm font-medium">{item.qty}</div>
+          <button type="button" onClick={onPlus} className="h-9 w-9 grid place-items-center hover:bg-gray-50 transition">
+            +
+          </button>
+        </div>
+
+        <div className="text-sm font-semibold text-gray-900">
+          {money(Number(item.price || 0) * Number(item.qty || 0))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceRow({ inv }) {
+  const id = get(inv, "id", "Id");
+  const customer = get(inv, "customerName", "CustomerName") || "Customer";
+  const total = Number(get(inv, "totalAmount", "TotalAmount") || 0);
+  const date = get(inv, "dateCreated", "DateCreated");
+  const userName = get(inv, "userName", "UserName");
+
+  return (
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="font-semibold text-gray-900 truncate">
+          Invoice #{id} • {customer}
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {date ? new Date(date).toLocaleString() : ""}
+          {userName ? ` • Created by: ${userName}` : ""}
+        </div>
+      </div>
+
+      <div className="text-right">
+        <div className="text-sm font-semibold text-gray-900">{money(total)}</div>
+        <div className="text-xs text-gray-400">total</div>
+      </div>
+    </div>
+  );
+}
+
+function PrescriptionRow({ rx }) {
+  const id = get(rx, "id", "Id");
+  const patient = get(rx, "patientId", "PatientId") || get(rx, "patientName", "PatientName");
+  const doctor = get(rx, "doctorName", "DoctorName");
+  const status = get(rx, "status", "Status");
+  const created = get(rx, "dateCreated", "DateCreated") || get(rx, "createdAt", "CreatedAt");
+
+  return (
+    <div className="rounded-2xl border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-semibold text-gray-900 truncate">Prescription #{id}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {patient ? `Patient: ${patient} • ` : ""}
+            {doctor ? `Doctor: ${doctor}` : ""}
+          </div>
+        </div>
+        {status !== undefined && (
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700">
+            {String(status)}
+          </span>
+        )}
+      </div>
+
+      {created && (
+        <div className="text-xs text-gray-400 mt-2">
+          {new Date(created).toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupplierRow({ s, onDeactivate, onReactivate }) {
+  const id = get(s, "id", "Id");
+  const name = get(s, "name", "Name") || "Supplier";
+  const contact = get(s, "contactInfo", "ContactInfo");
+  const medicinesCount = get(s, "medicinesCount", "MedicinesCount");
+
+  // optional status if your DTO includes it
+  const isActive = get(s, "isActive", "IsActive", "active", "Active");
+
+  return (
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <div className="font-semibold text-gray-900 truncate">{name}</div>
+
+          {isActive !== undefined && (
+            <span
+              className={
+                "text-xs px-2 py-0.5 rounded-full border " +
+                (isActive
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-red-50 text-red-700 border-red-200")
+              }
+            >
+              {isActive ? "Active" : "Inactive"}
+            </span>
+          )}
+        </div>
+
+        <div className="text-xs text-gray-500 mt-1">
+          {contact ? `Contact: ${contact}` : "No contact info"}
+          {medicinesCount !== undefined ? ` • Medicines: ${medicinesCount}` : ""}
+        </div>
+      </div>
+
+      {/* ✅ Buttons */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => onDeactivate(id)}
+          className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+        >
+          Deactivate
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onReactivate(id)}
+          className="px-3 h-9 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+        >
+          Reactivate
+        </button>
+
+        <span className="text-xs text-gray-400">#{id}</span>
+      </div>
+    </div>
+  );
+}
+
+
+function Empty({ title, text }) {
+  return (
+    <div className="rounded-2xl border bg-gray-50 px-4 py-10 text-center">
+      <div className="text-sm font-semibold text-gray-900">{title}</div>
+      <div className="text-xs text-gray-500 mt-1">{text}</div>
+    </div>
+  );
+}
+
+function Skeleton({ rows = 5 }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="rounded-2xl border p-4">
+          <div className="h-4 w-1/2 bg-gray-100 rounded" />
+          <div className="mt-3 h-3 w-2/3 bg-gray-100 rounded" />
+        </div>
+      ))}
+    </div>
+  );
 }
