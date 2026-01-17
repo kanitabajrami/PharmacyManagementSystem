@@ -98,11 +98,11 @@ namespace PharmacyManagmentSystem
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowReactApp", policy =>
-                    policy.WithOrigins("http://localhost:3000")
+                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
                           .AllowAnyHeader()
-                          .AllowAnyMethod());
+                          .AllowAnyMethod()
+                          .AllowCredentials());
             });
-
 
             var app = builder.Build();
 
@@ -134,18 +134,19 @@ namespace PharmacyManagmentSystem
                 app.UseSwaggerUI();
             }
 
-            app.UseCors("AllowReactApp");
+            await SeedRolesAndAdminAsync(app);
 
             app.UseHttpsRedirection();
 
+
+            app.UseRouting();
+            app.UseCors("AllowReactApp");
+
             app.UseAuthentication();
             app.UseAuthorization();
-          
-
-
             app.MapControllers();
 
-            await SeedRolesAndAdminAsync(app);
+            
 
             app.Run();
         }
