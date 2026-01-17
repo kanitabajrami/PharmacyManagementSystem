@@ -52,6 +52,25 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(new { token });
         }
 
+        [HttpPost("login-with-role")]
+        public async Task<IActionResult> LoginWithRole(LoginDto dto)
+        {
+            var user = await _userManager.FindByNameAsync(dto.UserNameOrEmail)
+                       ?? await _userManager.FindByEmailAsync(dto.UserNameOrEmail);
+
+            if (user == null) return Unauthorized("Invalid credentials.");
+
+            var ok = await _userManager.CheckPasswordAsync(user, dto.Password);
+            if (!ok) return Unauthorized("Invalid credentials.");
+
+            var roles = await _userManager.GetRolesAsync(user); // get all roles
+
+            // Optional: you can also generate a JWT token if needed
+            // var token = await CreateTokenAsync(user);
+
+            return Ok(new { username = user.UserName, roles });
+        }
+
         private async Task<string> CreateTokenAsync(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
