@@ -95,6 +95,15 @@ namespace PharmacyManagmentSystem
 
             builder.Services.AddScoped<PrescriptionHelper>();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp", policy =>
+                    policy.WithOrigins("http://localhost:3000")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod());
+            });
+
+
             var app = builder.Build();
 
 
@@ -110,7 +119,6 @@ namespace PharmacyManagmentSystem
                     if (!await roleManager.RoleExistsAsync(r))
                         await roleManager.CreateAsync(new IdentityRole(r));
 
-                // ✅ change this to your email/username
                 var adminUserName = "blenda";
                 var user = await userManager.FindByNameAsync(adminUserName);
 
@@ -125,6 +133,8 @@ namespace PharmacyManagmentSystem
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
+            app.UseCors("AllowReactApp");
 
             app.UseHttpsRedirection();
 

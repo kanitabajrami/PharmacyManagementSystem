@@ -10,64 +10,64 @@ using System.Security.Claims;
 
 namespace PharmacyManagmentSystem.Controllers
 {
-[Route("api/[controller]")]
-[ApiController]
-[Authorize] // ✅ protect all endpoints (or move to just Create if you want)
-public class InvoicesController : ControllerBase
-{
-    private readonly ApplicationDbContext _db;
-    private readonly IInvoiceRepository _invoiceRepo;
-
-    public InvoicesController(ApplicationDbContext db, IInvoiceRepository invoiceRepo)
+    [Route("api/[controller]")]
+    [ApiController]
+    //[Authorize] 
+    public class InvoicesController : ControllerBase
     {
-        _db = db;
-        _invoiceRepo = invoiceRepo;
-    }
+        private readonly ApplicationDbContext _db;
+        private readonly IInvoiceRepository _invoiceRepo;
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var invoices = await _invoiceRepo.GetAllAsync();
-        return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
-    }
+        public InvoicesController(ApplicationDbContext db, IInvoiceRepository invoiceRepo)
+        {
+            _db = db;
+            _invoiceRepo = invoiceRepo;
+        }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        var invoice = await _invoiceRepo.GetByIdAsync(id);
-        if (invoice == null) return NotFound($"Invoice with id {id} not found.");
-        return Ok(InvoiceMapper.ToResponseDto(invoice));
-    }
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var invoices = await _invoiceRepo.GetAllAsync();
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
+        }
 
-    // ✅ removed :int
-    [HttpGet("user/{userId}")]
-    public async Task<IActionResult> GetByUser(string userId)
-    {
-        var invoices = await _invoiceRepo.GetByUserAsync(userId);
-        return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
-    }
-    [Authorize(Roles = "User")]
-    [HttpGet("range")]
-    public async Task<IActionResult> GetByDateRange([FromQuery] DateTime start, [FromQuery] DateTime end)
-    {
-        if (start > end) return BadRequest("Start date must be before end date.");
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var invoice = await _invoiceRepo.GetByIdAsync(id);
+            if (invoice == null) return NotFound($"Invoice with id {id} not found.");
+            return Ok(InvoiceMapper.ToResponseDto(invoice));
+        }
 
-        var invoices = await _invoiceRepo.GetByDateRangeAsync(start, end);
-        return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
-    }
+        // ✅ removed :int
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetByUser(string userId)
+        {
+            var invoices = await _invoiceRepo.GetByUserAsync(userId);
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
+        }
+        [Authorize(Roles = "User")]
+        [HttpGet("range")]
+        public async Task<IActionResult> GetByDateRange([FromQuery] DateTime start, [FromQuery] DateTime end)
+        {
+            if (start > end) return BadRequest("Start date must be before end date.");
 
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateInvoiceDto dto)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+            var invoices = await _invoiceRepo.GetByDateRangeAsync(start, end);
+            return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
+        }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-            return Unauthorized("User is not authenticated.");
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateInvoiceDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
-        if (!userExists) return Unauthorized("Authenticated user does not exist.");
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized("User is not authenticated.");
+
+            var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
+            if (!userExists) return Unauthorized("Authenticated user does not exist.");
 
 
 

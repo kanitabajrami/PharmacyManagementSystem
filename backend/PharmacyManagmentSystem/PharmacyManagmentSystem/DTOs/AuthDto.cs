@@ -8,6 +8,7 @@ namespace PharmacyManagmentSystem.DTOs
         {
             [Required]
             public string UserName { get; set; } = default!;
+
             [Required, EmailAddress] 
             public string Email { get; set; } = default!;
             [Required, MinLength(6)] 
