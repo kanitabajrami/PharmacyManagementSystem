@@ -57,6 +57,9 @@ namespace PharmacyManagmentSystem.Controllers
         {
             if (start > end) return BadRequest("Start date must be before end date.");
 
+            start = DateTime.SpecifyKind(start, DateTimeKind.Utc);
+            end = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+
             var invoices = await _invoiceRepo.GetByDateRangeAsync(start, end);
             return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }

@@ -62,7 +62,7 @@ namespace PharmacyManagmentSystem.Controllers
             {
                 return StatusCode(500, $"Failed to import prescription: {ex.Message}");
             }
-            }
+        }
 
         // PUT: api/Prescription/{id}
         //[HttpPut("{id}")]
@@ -115,6 +115,20 @@ namespace PharmacyManagmentSystem.Controllers
         {
             var prescriptions = await _repository.GetByDoctorAsync(doctorName);
             return Ok(prescriptions.Select(PrescriptionMapper.toDto));
+        }
+
+        // GET: api/Prescription/missing-medicines
+        [HttpGet("missing-medicines")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult GetMissingMedicinesLog()
+        {
+            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs", "missing_medicines.txt");
+
+            if (!System.IO.File.Exists(logPath))
+                return Ok(new List<string>());
+
+            var lines = System.IO.File.ReadAllLines(logPath);
+            return Ok(lines);
         }
 
         //// GET: api/Prescription/expired
