@@ -73,6 +73,7 @@ const TABS = [
   { id: "invoices", label: "Invoices" },
   { id: "prescriptions", label: "Prescriptions" },
   { id: "suppliers", label: "Suppliers" },
+  { id: "users", label: "Users" },
 ];
 
 /* ================= COMPONENT ================= */
@@ -95,7 +96,6 @@ export default function AdminDashboard() {
   const [inStockOnly, setInStockOnly] = useState(true);
   const [sort, setSort] = useState("name_asc"); // name_asc | price_asc | price_desc
   const [viewMode, setViewMode] = useState("all"); // all | low | expiring
-  const [medToDelete, setMedToDelete] = useState(null); // medicine ID to delete
   const [newMed, setNewMed] = useState({name: "", category: "", supplierId: "", price: "", quantity: "", expirationDate: ""});
   const [medCreating, setMedCreating] = useState(false);
 
@@ -111,8 +111,7 @@ export default function AdminDashboard() {
   const [prescriptions, setPrescriptions] = useState([]);        // List of prescriptions
   const [newPrescription, setNewPrescription] = useState({ patientId: "", patientName: "", doctorName: "", medicines: [],});
   const [missingMedicines, setMissingMedicines] = useState([]); // List of missing medicines
-  const [rxCreating, setRxCreating] = useState(false);          // Loading state for creating prescription
-
+  const [prescriptionCreating, setPrescriptionCreating] = useState(false);          // Loading state for creating prescription
 
   // ===== Suppliers state =====
   const [supLoading, setSupLoading] = useState(true);
@@ -120,7 +119,15 @@ export default function AdminDashboard() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supToAdd, setSupToAdd] = useState(null); // object for new supplier
   const [supToUpdate, setSupToUpdate] = useState(null); // object for supplier updates
-  const [supToDelete, setSupToDelete] = useState(null); // supplier ID to delete
+
+  // ===== Users state =====
+  const [users, setUsers] = useState([]);
+  const [userLoading, setUserLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState("");
+  const [userToAdd, setUserToAdd] = useState({ userName: "", email: "", password: "" });
+  const [userRolesToEdit, setUserRolesToEdit] = useState(null); // { userName, roles }
+  const [userCreating, setUserCreating] = useState(false);
+  const [roleUpdating, setRoleUpdating] = useState(false);
 
   /* ===== LOGOUT ===== */
   function logout() {
@@ -194,20 +201,56 @@ export default function AdminDashboard() {
   }
 
   async function createPrescription() {
-    setRxCreating(true);
+    setPrescriptionCreating(true);
+
     try {
-      if (newPrescription.medicines.length === 0) {
+      // Basic validation
+      if (!newPrescription.patientName || !newPrescription.doctorName) {
+        alert("Patient name and doctor name are required.");
+        return;
+      }
+
+      if (!Array.isArray(newPrescription.medicines) || newPrescription.medicines.length === 0) {
         alert("You must add at least one medicine.");
         return;
       }
 
-      // Remove duplicates by MedicineId
-      const uniqueMedicines = newPrescription.medicines.filter(
-        (v, i, a) => a.findIndex((x) => x.medicineId === v.medicineId) === i
+      // Clean medicines list:
+      // - remove empty rows
+      // - ensure valid quantity
+      const cleanedMedicines = newPrescription.medicines
+        .filter(m => m.medicineId && m.quantity > 0)
+        .map(m => ({
+          medicineId: Number(m.medicineId),
+          quantity: Number(m.quantity),
+        }));
+
+      if (cleanedMedicines.length === 0) {
+        alert("No valid medicines found.");
+        return;
+      }
+
+      // Remove duplicates (merge quantities)
+      const mergedMedicines = Object.values(
+        cleanedMedicines.reduce((acc, m) => {
+          if (!acc[m.medicineId]) {
+            acc[m.medicineId] = { ...m };
+          } else {
+            acc[m.medicineId].quantity += m.quantity;
+          }
+          return acc;
+        }, {})
       );
 
-      const dto = { ...newPrescription, medicines: uniqueMedicines };
+      // Final DTO
+      const dto = {
+        patientId: newPrescription.patientId || null,
+        patientName: newPrescription.patientName.trim(),
+        doctorName: newPrescription.doctorName.trim(),
+        medicines: mergedMedicines,
+      };
 
+      // POST
       await apiFetch("/api/Prescription", {
         method: "POST",
         body: JSON.stringify(dto),
@@ -215,22 +258,23 @@ export default function AdminDashboard() {
 
       alert("Prescription added successfully!");
 
-      // Reset form
+      //Reset form
       setNewPrescription({
         patientId: "",
         patientName: "",
         doctorName: "",
-        medicines: [{ medicineId: "", quantity: 1 }],
+        medicines: [],
       });
 
-      // Refresh list and missing medicines
+      // Refresh data
       await loadPrescriptionsAll();
       await loadMissingMedicines();
+
     } catch (e) {
       console.error("Failed POST /api/Prescription:", e);
       alert(e.message || "Failed to add prescription.");
     } finally {
-      setRxCreating(false);
+      setPrescriptionCreating(false);
     }
   }
 
@@ -247,6 +291,114 @@ export default function AdminDashboard() {
     }
   }
   
+  async function createSupplier() {
+    if (!supToAdd?.name) {
+      alert("Supplier name is required.");
+      return;
+    }
+
+    try {
+      setSupLoading(true);
+      const created = await apiFetch("/api/suppliers", {
+        method: "POST",
+        body: JSON.stringify(supToAdd),
+      });
+      alert("Supplier added!");
+      setSupToAdd(null);
+      await loadSuppliers();
+    } catch (e) {
+      alert(e.message || "Failed to add supplier.");
+    } finally {
+      setSupLoading(false);
+    }
+  }
+
+  async function updateSupplier() {
+    if (!supToUpdate?.id || !supToUpdate?.name) {
+      alert("Supplier ID and name are required.");
+      return;
+    }
+
+    try {
+      setSupLoading(true);
+      const updated = await apiFetch(`/api/suppliers/${supToUpdate.id}`, {
+        method: "PUT",
+        body: JSON.stringify(supToUpdate),
+      });
+      alert("Supplier updated!");
+      setSupToUpdate(null);
+      await loadSuppliers();
+    } catch (e) {
+      alert(e.message || "Failed to update supplier.");
+    } finally {
+      setSupLoading(false);
+    }
+  }
+
+  async function deleteSupplier(id) {
+    if (!window.confirm("Are you sure you want to delete this supplier?")) return;
+
+    try {
+      setSupLoading(true);
+      await apiFetch(`/api/suppliers/${id}`, { method: "DELETE" });
+      alert("Supplier deleted!");
+      await loadSuppliers();
+    } catch (e) {
+      alert(e.message || "Failed to delete supplier.");
+    } finally {
+      setSupLoading(false);
+    }
+  }
+
+  async function createUser() {
+    setUserCreating(true);
+    try {
+      if (!userToAdd.userName || !userToAdd.email || !userToAdd.password) {
+        alert("All fields are required.");
+        return;
+      }
+
+      await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify(userToAdd),
+      });
+
+      alert("User created successfully!");
+      setUserToAdd({ userName: "", email: "", password: "" });
+      await loadUsers();
+    } catch (e) {
+      alert(e.message || "Failed to create user.");
+    } finally {
+      setUserCreating(false);
+    }
+  }
+
+  async function addRoleToUser(userName, role) {
+    setRoleUpdating(true);
+    try {
+      await apiFetch(`/api/roles/add?userName=${userName}&role=${role}`, { method: "POST" });
+      alert(`Role '${role}' added to ${userName}`);
+      await loadUsers();
+    } catch (e) {
+      alert(e.message || "Failed to add role.");
+    } finally {
+      setRoleUpdating(false);
+    }
+  }
+
+  async function removeRoleFromUser(userName, role) {
+    setRoleUpdating(true);
+    try {
+      await apiFetch(`/api/roles/remove?userName=${userName}&role=${role}`, { method: "POST" });
+      alert(`Role '${role}' removed from ${userName}`);
+      await loadUsers();
+    } catch (e) {
+      alert(e.message || "Failed to remove role.");
+    } finally {
+      setRoleUpdating(false);
+    }
+  }
+
   /* ================= LOADERS ================= */
   async function loadMedicinesAll() {
     setMedLoading(true);
@@ -340,16 +492,30 @@ export default function AdminDashboard() {
   async function loadMissingMedicines() {
     try {
       const data = await apiFetch("/api/Prescription/missing-medicines");
-      setMissingMedicines(Array.isArray(data) ? data : []);
+
+      // `data` is an array of strings
+      const parsed = data
+        .map(line => {
+          const match = line.match(
+            /Patient:\s*(.*?),\s*Doctor:\s*(.*?),\s*MedicineId:\s*(\d+),\s*Quantity:\s*(\d+)/
+          );
+          if (!match) return null;
+          const [, patientName, doctorName, medicineId, quantity] = match;
+          return {
+            patientName,
+            doctorName,
+            medicineId: Number(medicineId),
+            quantity: Number(quantity)
+          };
+        })
+        .filter(Boolean); // remove invalid lines
+
+      setMissingMedicines(parsed);
     } catch (err) {
-      console.error(err.message);
+      console.error("Failed to load missing medicines:", err.message);
+      setMissingMedicines([]);
     }
   }
-
-  const showMissingMedicines = async () => {
-    await loadMissingMedicines();
-      setViewMode("missing"); // Optional: track the view mode
-  };
 
   async function loadSuppliers() {
     setSupLoading(true);
@@ -361,6 +527,18 @@ export default function AdminDashboard() {
       setError(e.message || "Failed to load suppliers.");
     } finally {
       setSupLoading(false);
+    }
+  }
+
+  async function loadUsers() {
+    setUserLoading(true);
+    try {
+      const data = await apiFetch("/api/Users"); 
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      alert(e.message || "Failed to load users.");
+    } finally {
+      setUserLoading(false);
     }
   }
 
@@ -381,6 +559,38 @@ export default function AdminDashboard() {
     }
   }
 
+  async function deactivateSupplier(id) {
+    try {
+      await apiFetch(`/api/suppliers/${id}/deactivate`, { method: "PUT" });
+      await loadSuppliers(); // refresh list
+      alert("Supplier deactivated.");
+    } catch (e) {
+      alert(e.message || "Failed to deactivate supplier.");
+    }
+  }
+
+  async function reactivateSupplier(id) {
+    try {
+      await apiFetch(`/api/suppliers/${id}/reactivate`, { method: "PUT" });
+      await loadSuppliers(); // refresh list
+      alert("Supplier reactivated.");
+    } catch (e) {
+      alert(e.message || "Failed to reactivate supplier.");
+    }
+  }
+
+  function openAddSupplierForm() {
+    setSupToAdd({ name: "", email: "", phone: "" });
+  }
+
+  function openEditSupplierForm(supplier) {
+    setSupToUpdate({ ...supplier });
+  }
+
+  function openRolesEditor(user) {
+    setUserRolesToEdit({ userName: user.userName, roles: user.roles || [] });
+  }
+
   /* ================= INIT ================= */
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -396,7 +606,8 @@ export default function AdminDashboard() {
     loadPrescriptionsAll();
     loadSuppliers();
     loadMissingMedicines();
-  }, []);
+    if (tab === "users") loadUsers();
+  }, [tab]);
 
   // ---------- MEDICINES VIEW ----------
   const medicinesView = useMemo(() => {
@@ -428,25 +639,15 @@ export default function AdminDashboard() {
     });
   }, [suppliers, supplierSearch]);
 
-async function deactivateSupplier(id) {
-  try {
-    await apiFetch(`/api/suppliers/${id}/deactivate`, { method: "PUT" });
-    await loadSuppliers(); // refresh list
-    alert("Supplier deactivated.");
-  } catch (e) {
-    alert(e.message || "Failed to deactivate supplier.");
-  }
-}
+  const usersView = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(u => 
+      String(u.userName || "").toLowerCase().includes(q) ||
+      String(u.email || "").toLowerCase().includes(q)
+    );
+  }, [users, userSearch]);
 
-async function reactivateSupplier(id) {
-  try {
-    await apiFetch(`/api/suppliers/${id}/reactivate`, { method: "PUT" });
-    await loadSuppliers(); // refresh list
-    alert("Supplier reactivated.");
-  } catch (e) {
-    alert(e.message || "Failed to reactivate supplier.");
-  }
-}
   /* ================= UI ================= */
   return (
     <div className="min-h-screen bg-gray-50">
@@ -860,12 +1061,15 @@ async function reactivateSupplier(id) {
                     {prescriptions.map((rx) => (
                       <div
                         key={rx.id ?? rx.Id}
-                        className="rounded-2xl border p-4 flex items-center justify-between gap-3 bg-white hover:bg-gray-50 transition"
+                        className="rounded-2xl border p-4 flex items-center justify-between gap-3
+                                  bg-white hover:bg-gray-50 transition"
                       >
                         <PrescriptionRow rx={rx} />
+
                         <button
                           onClick={() => deletePrescription(rx.id ?? rx.Id)}
-                          className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition"
+                          className="px-3 py-1 rounded-xl text-sm font-medium text-white
+                                    bg-red-600 hover:bg-red-700 transition"
                         >
                           Delete
                         </button>
@@ -874,81 +1078,62 @@ async function reactivateSupplier(id) {
                   </div>
                 )}
               </div>
-
-              {/* Bottom: Missing Medicines */}
-              {missingMedicines.length > 0 && (
-                <div className="mt-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <h3 className="text-md font-semibold text-gray-800 mb-2">
-                    Missing Medicines
-                  </h3>
-                  <ul className="text-sm text-gray-700 list-disc list-inside max-h-64 overflow-y-auto space-y-1">
-                    {missingMedicines.map((m, idx) => (
-                      <li key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:gap-4">
-                        <span>
-                          <strong>Patient:</strong> {m.patientName} 
-                        </span>
-                        <span>
-                          <strong>Doctor:</strong> {m.doctorName}
-                        </span>
-                        <span>
-                          <strong>Medicine:</strong> {m.medicineName ?? m.medicineId}
-                        </span>
-                        <span>
-                          <strong>Quantity:</strong> {m.quantity}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
+
             {/* Right: Add New Prescription */}
             <div className="bg-white rounded-3xl border shadow-sm sticky top-[76px] h-fit p-5">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">
                 Add New Prescription
               </h2>
               <p className="text-sm text-gray-500 mb-4">
-                Fill in the details and add at least one valid medicine.
+                Fill in patient details and add one or more valid medicines.
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Patient Info */}
                 <input
                   value={newPrescription.patientId}
                   onChange={(e) =>
                     setNewPrescription({ ...newPrescription, patientId: e.target.value })
                   }
-                  placeholder="Patient ID"
+                  placeholder="EMBG"
                   className="w-full h-10 px-3 rounded-xl border text-sm outline-none
                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
                 />
-
                 <input
                   value={newPrescription.patientName}
                   onChange={(e) =>
                     setNewPrescription({ ...newPrescription, patientName: e.target.value })
                   }
-                  placeholder="Patient Name"
+                  placeholder="Patient Name "
                   className="w-full h-10 px-3 rounded-xl border text-sm outline-none
                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
                 />
-
                 <input
                   value={newPrescription.doctorName}
                   onChange={(e) =>
                     setNewPrescription({ ...newPrescription, doctorName: e.target.value })
                   }
-                  placeholder="Doctor Name"
+                  placeholder="Doctor Name "
                   className="w-full h-10 px-3 rounded-xl border text-sm outline-none
                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
                 />
 
                 {/* Medicines */}
                 <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Medicines *</p>
+
+                  {newPrescription.medicines.length === 0 && (
+                    <p className="text-sm text-red-500">Add at least one medicine</p>
+                  )}
+
                   {newPrescription.medicines.map((med, index) => (
                     <div key={index} className="flex gap-2 items-center">
-                      <select
+                      <input
+                        type="number"
+                        min={1}
                         value={med.medicineId || ""}
+                        placeholder="Medicine ID"
                         onChange={(e) => {
                           const updated = [...newPrescription.medicines];
                           updated[index].medicineId = Number(e.target.value);
@@ -956,41 +1141,31 @@ async function reactivateSupplier(id) {
                         }}
                         className="flex-1 h-10 px-3 rounded-xl border text-sm outline-none
                                   focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                      >
-                        <option value="">Select medicine</option>
-                        {medicines.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} (Stock: {m.quantity})
-                          </option>
-                        ))}
-                      </select>
-
+                      />
                       <input
                         type="number"
                         min={1}
                         value={med.quantity}
+                        placeholder="Qty"
                         onChange={(e) => {
                           const updated = [...newPrescription.medicines];
                           updated[index].quantity = Number(e.target.value);
                           setNewPrescription({ ...newPrescription, medicines: updated });
                         }}
-                        placeholder="Qty"
                         className="w-20 h-10 px-3 rounded-xl border text-sm outline-none
                                   focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
                       />
-
-                      {newPrescription.medicines.length > 1 && (
-                        <button
-                          onClick={() => {
-                            const updated = [...newPrescription.medicines];
-                            updated.splice(index, 1);
-                            setNewPrescription({ ...newPrescription, medicines: updated });
-                          }}
-                          className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition"
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          const updated = [...newPrescription.medicines];
+                          updated.splice(index, 1);
+                          setNewPrescription({ ...newPrescription, medicines: updated });
+                        }}
+                        className="px-3 py-1 rounded-xl text-sm font-medium text-white
+                                  bg-red-600 hover:bg-red-700 transition"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
 
@@ -1001,80 +1176,330 @@ async function reactivateSupplier(id) {
                         medicines: [...newPrescription.medicines, { medicineId: "", quantity: 1 }],
                       })
                     }
-                    className="w-full h-10 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                    className="w-full h-10 rounded-xl font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition"
                   >
-                    + Add Another Medicine
+                    + Add Medicine
                   </button>
                 </div>
 
-                {/* Add Prescription Button */}
+                {/* Submit */}
                 <button
                   onClick={createPrescription}
                   disabled={
-                    rxCreating ||
-                    !newPrescription.patientId ||
+                    prescriptionCreating ||
                     !newPrescription.patientName ||
                     !newPrescription.doctorName ||
-                    newPrescription.medicines.length === 0 // Disabled if no medicines
+                    newPrescription.medicines.length === 0
                   }
-                  className="mt-2 w-full h-11 rounded-xl font-semibold text-white shadow
+                  className="mt-3 w-full h-11 rounded-xl font-semibold text-white shadow
                             bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99]
                             disabled:opacity-60 disabled:cursor-not-allowed transition"
                 >
-                  {rxCreating ? "Adding..." : "Add Prescription"}
+                  {prescriptionCreating ? "Adding..." : "Add Prescription"}
                 </button>
               </div>
             </div>
 
+            {/* Bottom: Missing Medicines Container */}
+            <div className="lg:col-span-3 mt-6">
+              <div className="bg-white rounded-3xl border shadow-sm p-5">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  Missing Medicines
+                </h2>
+                {missingMedicines.length === 0 ? (
+                  <div className="text-gray-500 text-sm">No missing medicines.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {missingMedicines.map((m, idx) => (
+                      <MissingMedicineRow key={idx} m={m} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-
         {tab === "suppliers" && (
-          <div className="bg-white rounded-3xl border shadow-sm">
-            <div className="p-5 border-b flex items-start sm:items-center justify-between gap-3">
-              <div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* ----- Left: Supplier List ----- */}
+            <div className="lg:col-span-2 bg-white rounded-3xl border shadow-sm">
+              {/* Header */}
+              <div className="p-5 border-b flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
-                <p className="text-sm text-gray-500">
-                  Search suppliers by name or contact info.
-                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={openAddSupplierForm}
+                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
+                  >
+                    + Add Supplier
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
+
+              {/* Supplier List */}
+              <div className="p-5">
+                {/* Search */}
+                <input
+                  value={supplierSearch}
+                  onChange={(e) => setSupplierSearch(e.target.value)}
+                  placeholder="Search suppliers..."
+                  className="w-full mb-4 h-10 px-3 rounded-xl border text-sm outline-none
+                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+
+                {supLoading ? (
+                  <Skeleton rows={6} />
+                ) : suppliersView.length === 0 ? (
+                  <Empty title="No suppliers found" text="Try a different search." />
+                ) : (
+                  <div className="space-y-3">
+                    {suppliersView.map((s) => {
+                      const isActive = s.isActive ?? s.IsActive;
+                      return (
+                        <div
+                          key={s.id ?? s.Id}
+                          className="rounded-2xl border p-4 flex items-center justify-between gap-3
+                                    bg-white hover:bg-gray-50 transition"
+                        >
+                          {/* Supplier Info */}
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 truncate">{s.name ?? s.Name}</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {s.email ?? s.Email} • {s.phone ?? s.Phone}
+                            </div>
+                            <div className="mt-1">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full border ${
+                                  isActive
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                                }`}
+                              >
+                                {isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            {isActive ? (
+                              <button
+                                onClick={() => deactivateSupplier(s.id ?? s.Id)}
+                                className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 transition"
+                              >
+                                Deactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => reactivateSupplier(s.id ?? s.Id)}
+                                className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition"
+                              >
+                                Reactivate
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openEditSupplierForm(s)}
+                              className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteSupplier(s.id ?? s.Id)}
+                              className="px-3 py-1 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ----- Right: Add/Edit Supplier Form ----- */}
+            {(supToAdd || supToUpdate) && (
+              <div className="bg-white rounded-3xl border shadow-sm sticky top-[76px] h-fit p-5">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                  {supToAdd ? "Add New Supplier" : "Edit Supplier"}
+                </h2>
+
+                <div className="space-y-3">
+                  {/* Name */}
+                  <input
+                    value={supToAdd?.name ?? supToUpdate?.name ?? ""}
+                    onChange={(e) => {
+                      if (supToAdd) setSupToAdd({ ...supToAdd, name: e.target.value });
+                      if (supToUpdate) setSupToUpdate({ ...supToUpdate, name: e.target.value });
+                    }}
+                    placeholder="Supplier Name *"
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                              focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+
+                  {/* Email */}
+                  <input
+                    value={supToAdd?.email ?? supToUpdate?.email ?? ""}
+                    onChange={(e) => {
+                      if (supToAdd) setSupToAdd({ ...supToAdd, email: e.target.value });
+                      if (supToUpdate) setSupToUpdate({ ...supToUpdate, email: e.target.value });
+                    }}
+                    placeholder="Email"
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                              focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+
+                  {/* Phone */}
+                  <input
+                    value={supToAdd?.phone ?? supToUpdate?.phone ?? ""}
+                    onChange={(e) => {
+                      if (supToAdd) setSupToAdd({ ...supToAdd, phone: e.target.value });
+                      if (supToUpdate) setSupToUpdate({ ...supToUpdate, phone: e.target.value });
+                    }}
+                    placeholder="Phone"
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                              focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+
+                  {/* Submit */}
+                  <button
+                    onClick={supToAdd ? createSupplier : updateSupplier}
+                    disabled={supLoading || !(supToAdd?.name || supToUpdate?.name)}
+                    className="mt-2 w-full h-11 rounded-xl font-semibold text-white shadow
+                              bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99]
+                              disabled:opacity-60 disabled:cursor-not-allowed transition"
+                  >
+                    {supToAdd ? "Add Supplier" : "Update Supplier"}
+                  </button>
+
+                  {/* Cancel */}
+                  <button
+                    onClick={() => {
+                      setSupToAdd(null);
+                      setSupToUpdate(null);
+                    }}
+                    className="mt-2 w-full h-11 rounded-xl font-semibold text-gray-700 shadow
+                              bg-gray-100 hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "users" && (
+          <div className="grid grid-cols-1 gap-6">
+            {/* Add New User */}
+            <div className="bg-white rounded-3xl border shadow-sm p-5">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add New User</h2>
+              <div className="space-y-3">
+                <input
+                  placeholder="Username *"
+                  value={userToAdd.userName}
+                  onChange={e => setUserToAdd({ ...userToAdd, userName: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+                <input
+                  placeholder="Email *"
+                  type="email"
+                  value={userToAdd.email}
+                  onChange={e => setUserToAdd({ ...userToAdd, email: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+                <input
+                  placeholder="Password *"
+                  type="password"
+                  value={userToAdd.password}
+                  onChange={e => setUserToAdd({ ...userToAdd, password: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
                 <button
-                  onClick={loadSuppliers}
-                  className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+                  onClick={createUser}
+                  disabled={userCreating}
+                  className="w-full h-11 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed transition"
                 >
-                  Refresh
+                  {userCreating ? "Creating..." : "Add User"}
                 </button>
               </div>
             </div>
 
-            <div className="p-5">
+            {/* User List */}
+            <div className="bg-white rounded-3xl border shadow-sm p-5">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Users</h2>
               <input
-                value={supplierSearch}
-                onChange={(e) => setSupplierSearch(e.target.value)}
-                placeholder="Search supplier name/contact…"
-                className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                           focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 mb-4"
+                placeholder="Search users..."
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                className="w-full h-10 px-3 mb-3 rounded-xl border text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
               />
+              {userLoading ? (
+                <Skeleton rows={6} />
+              ) : usersView.length === 0 ? (
+                <Empty title="No users found" text="Add new users above." />
+              ) : (
+                <div className="space-y-3">
+                  {usersView.map((u, idx) => (
+                    <div key={idx} className="rounded-2xl border p-4 flex justify-between items-center gap-3">
+                      <div>
+                        <div className="font-semibold text-gray-900">{u.userName}</div>
+                        <div className="text-xs text-gray-500">{u.email}</div>
+                        <div className="text-xs text-gray-400">Roles: {u.roles?.join(", ") || "None"}</div>
+                      </div>
+                      <button
+                        onClick={() => openRolesEditor(u)}
+                        className="px-3 h-9 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                      >
+                        Edit Roles
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-             {supLoading ? (
-              <Skeleton rows={6} />
-            ) : suppliersView.length === 0 ? (
-              <Empty title="No suppliers" text="Try another search." />
-            ) : (
-              <div className="space-y-3">
-               {suppliersView.map((s) => (
-              <SupplierRow
-                key={get(s, "id", "Id")}
-                s={s}
-                onDeactivate={deactivateSupplier}
-                onReactivate={reactivateSupplier}
-              />
-            ))}   
+            {/* Edit Roles Modal */}
+            {userRolesToEdit && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4">
+                  <h3 className="text-lg font-semibold">Edit Roles: {userRolesToEdit.userName}</h3>
+                  {["Admin", "User"].map(role => {
+                    const hasRole = userRolesToEdit.roles.includes(role);
+                    return (
+                      <div key={role} className="flex items-center justify-between">
+                        <div>{role}</div>
+                        {hasRole ? (
+                          <button
+                            onClick={() => removeRoleFromUser(userRolesToEdit.userName, role)}
+                            disabled={roleUpdating}
+                            className="px-3 h-8 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition"
+                          >
+                            Remove
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => addRoleToUser(userRolesToEdit.userName, role)}
+                            disabled={roleUpdating}
+                            className="px-3 h-8 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                          >
+                            Add
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={() => setUserRolesToEdit(null)}
+                    className="mt-3 w-full h-10 rounded-xl border font-medium text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             )}
-            </div>
           </div>
         )}
       </div>
@@ -1161,90 +1586,99 @@ function InvoiceRow({ inv }) {
 
 function PrescriptionRow({ rx }) {
   const id = get(rx, "id", "Id");
-  const patient = get(rx, "patientId", "PatientId") || get(rx, "patientName", "PatientName");
-  const doctor = get(rx, "doctorName", "DoctorName");
+
+  const patientName =
+    get(rx, "patientName", "PatientName") || "Unknown patient";
+  const patientId = get(rx, "patientId", "PatientId");
+
+  const doctorName =
+    get(rx, "doctorName", "DoctorName") || "—";
+
   const status = get(rx, "status", "Status");
-  const created = get(rx, "dateCreated", "DateCreated") || get(rx, "createdAt", "CreatedAt");
+  const created =
+    get(rx, "dateCreated", "DateCreated") ||
+    get(rx, "createdAt", "CreatedAt");
+
+  const meds =
+    get(rx, "prescriptionMedicines") ??
+    get(rx, "PrescriptionMedicines") ??
+    get(rx, "medicines") ??
+    get(rx, "Medicines") ??
+    [];
+
+  const medsCount = Array.isArray(meds) ? meds.length : 0;
+
+  const statusLabel =
+    String(status).toLowerCase() === "ready" ? "Ready" : "Pending";
+
+  const statusBadge =
+    String(status).toLowerCase() === "ready"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
 
   return (
-    <div className="rounded-2xl border p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-semibold text-gray-900 truncate">Prescription #{id}</div>
+    <div className="min-w-0">
+      {/* Top row */}
+      <div className="flex items-center gap-2">
+        <div className="font-semibold text-gray-900 truncate">
+          Prescription #{id}
         </div>
-        {status !== undefined && (
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700">
-            {String(status)}
-          </span>
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full border ${statusBadge}`}
+        >
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Details */}
+      <div className="text-xs text-gray-500 mt-1">
+        Patient: {patientName}
+        {patientId ? ` (ID: ${patientId})` : ""} • Doctor: {doctorName}
+      </div>
+
+      <div className="text-xs text-gray-500 mt-1">
+        💊 Medicines: {medsCount}
+        {created && (
+          <> • 📅 {new Date(created).toLocaleString()}</>
         )}
       </div>
-
-      {created && (
-        <div className="text-xs text-gray-400 mt-2">
-          {new Date(created).toLocaleString()}
-        </div>
-      )}
     </div>
   );
 }
 
-function SupplierRow({ s, onDeactivate, onReactivate }) {
-  const id = get(s, "id", "Id");
-  const name = get(s, "name", "Name") || "Supplier";
-  const contact = get(s, "contactInfo", "ContactInfo");
-  const medicinesCount = get(s, "medicinesCount", "MedicinesCount");
+function MissingMedicineRow({ m }) {
+  const { patientName, doctorName, medicineId, quantity } = m;
 
-  // optional status if your DTO includes it
-  const isActive = get(s, "isActive", "IsActive", "active", "Active");
+  const quantityBadge =
+    quantity <= 1
+      ? "bg-red-50 text-red-700 border-red-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
 
   return (
-    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="font-semibold text-gray-900 truncate">{name}</div>
-
-          {isActive !== undefined && (
-            <span
-              className={
-                "text-xs px-2 py-0.5 rounded-full border " +
-                (isActive
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-red-50 text-red-700 border-red-200")
-              }
-            >
-              {isActive ? "Active" : "Inactive"}
-            </span>
-          )}
+    <div className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-white hover:bg-gray-50 transition">
+      
+      {/* Info */}
+      <div className="flex flex-col sm:flex-row sm:gap-6 w-full min-w-0">
+        <div className="text-sm text-gray-900 font-semibold truncate">
+          Patient: {patientName}
         </div>
-
-        <div className="text-xs text-gray-500 mt-1">
-          {contact ? `Contact: ${contact}` : "No contact info"}
-          {medicinesCount !== undefined ? ` • Medicines: ${medicinesCount}` : ""}
+        <div className="text-sm text-gray-700 truncate">
+          Doctor: {doctorName}
+        </div>
+        <div className="text-sm text-gray-700 truncate">
+          Medicine ID: {medicineId}
+        </div>
+        <div
+          className={`text-xs px-2 py-0.5 rounded-full border ${quantityBadge} font-medium`}
+        >
+          Qty: {quantity}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => onDeactivate(id)}
-          className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
-        >
-          Deactivate
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onReactivate(id)}
-          className="px-3 h-9 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
-        >
-          Reactivate
-        </button>
-
-        <span className="text-xs text-gray-400">#{id}</span>
-      </div>
     </div>
   );
 }
+
 function Empty({ title, text }) {
   return (
     <div className="rounded-2xl border bg-gray-50 px-4 py-10 text-center">
