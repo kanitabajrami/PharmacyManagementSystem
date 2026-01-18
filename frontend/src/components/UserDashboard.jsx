@@ -105,9 +105,17 @@ export default function UserDashboard() {
   const [inStockOnly, setInStockOnly] = useState(true);
   const [sort, setSort] = useState("name_asc"); // name_asc | price_asc | price_desc
   const [viewMode, setViewMode] = useState("all"); // all | low | expiring
+  
 
   // ===== Cart / Invoice create =====
-  const [cart, setCart] = useState([]); // {medicineId, name, price, qty}
+  const [cart, setCart] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem("cart") || "[]");
+  } catch {
+    return [];
+  }
+});
+
   const [customerName, setCustomerName] = useState("");
   const [prescriptionId, setPrescriptionId] = useState(""); // optional
   const cartTotal = useMemo(
@@ -124,6 +132,8 @@ export default function UserDashboard() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [patientId, setPatientId] = useState("");
   const [doctorName, setDoctorName] = useState("");
+  const [myPrescriptions, setMyPrescriptions] = useState([]);
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
 
   // ===== Suppliers state =====
   const [supLoading, setSupLoading] = useState(true);
@@ -271,6 +281,8 @@ export default function UserDashboard() {
       navigate("/login");
       return;
     }
+   
+
     setDisplayName(String(decodeJwtName(token)));
 
     // Load everything once so tabs feel instant
@@ -357,6 +369,8 @@ export default function UserDashboard() {
       setCustomerName("");
       setPrescriptionId("");
 
+  
+
       // refresh meds + invoices
       if (viewMode === "all") await loadMedicinesAll();
       if (viewMode === "low") await loadMedicinesLow();
@@ -367,6 +381,10 @@ export default function UserDashboard() {
       alert(e.message || "Failed to create invoice.");
     }
   }
+  useEffect(() => {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    }, [cart]);
+
 
   // ---------- SUPPLIERS VIEW ----------
   const suppliersView = useMemo(() => {
@@ -399,6 +417,76 @@ async function reactivateSupplier(id) {
     alert(e.message || "Failed to reactivate supplier.");
   }
 }
+
+async function applyPrescriptionToCart(pId) {
+  if (!pId) return;
+
+  try {
+    const rx = await apiFetch(`/api/Prescription/${pId}`);
+
+    const meds = rx?.medicines || rx?.Medicines; // depending on JSON casing
+    if (!Array.isArray(meds) || meds.length === 0) {
+      alert("This prescription has no medicines.");
+      return;
+    }
+
+    // Ensure medicine list exists (so we can get name + price)
+    let medsList = medicines;
+    if (!Array.isArray(medsList) || medsList.length === 0) {
+      const loaded = await apiFetch("/api/medicines");
+      medsList = Array.isArray(loaded) ? loaded : [];
+      setMedicines(medsList);
+    }
+
+    const nextCart = meds.map((it) => {
+      const medId = it.medicineId ?? it.MedicineId;
+      const qty = Number(it.quantity ?? it.Quantity ?? 1);
+
+      const med = medsList.find((m) => get(m, "id", "Id") === medId);
+
+      return {
+        medicineId: medId,
+        name: med ? get(med, "name", "Name") : `Medicine #${medId}`,
+        price: med ? Number(get(med, "price", "Price") || 0) : 0,
+        qty,
+      };
+    });
+
+    setCart(nextCart);
+
+    // Optional: auto-fill customer name from patient name
+    if (!customerName.trim()) {
+      const pn = rx?.patientName || rx?.PatientName;
+      if (pn) setCustomerName(pn);
+    }
+
+    alert("Prescription medicines added to cart.");
+  } catch (e) {
+    alert(e.message || "Failed to load prescription.");
+  }
+}
+
+async function loadMyPrescriptions() {
+  try {
+    // ✅ ideally you create backend endpoint: GET /api/Prescription/patient/{patientIdFromToken}
+    // But with your current backend, you can at least load all and filter client-side if needed.
+    const data = await apiFetch("/api/Prescription");
+    setMyPrescriptions(Array.isArray(data) ? data : []);
+  } catch {
+    setMyPrescriptions([]);
+  }
+}
+ useEffect(() => {
+     loadMyPrescriptions();
+   }, []);
+
+async function addPrescriptionToInvoice(rxId) {
+  setTab("medicines");                 // go to medicines/cart view
+  setPrescriptionId(String(rxId));     // keep payload correct
+  setSelectedPrescriptionId(String(rxId)); // if you use dropdown too
+  await applyPrescriptionToCart(String(rxId)); // fills cart
+}
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
@@ -615,16 +703,68 @@ async function reactivateSupplier(id) {
                              focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
                 />
 
-                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">
-                  PrescriptionId (optional)
-                </label>
-                <input
-                  value={prescriptionId}
-                  onChange={(e) => setPrescriptionId(e.target.value)}
-                  placeholder="e.g. 5"
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
+                
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+  Select Prescription
+</label>
+
+            <select
+              value={selectedPrescriptionId}
+              onChange={async (e) => {
+                const id = e.target.value;
+                setSelectedPrescriptionId(id);
+                setPrescriptionId(id); // keep your invoice payload using prescriptionId
+                if (id) await applyPrescriptionToCart(id);
+              }}
+              className="w-full h-10 px-3 rounded-xl border text-sm bg-white outline-none
+                        focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            >
+              <option value="">— No prescription —</option>
+              {myPrescriptions.map((p) => {
+                const id = get(p, "id", "Id");
+                const doctor = get(p, "doctorName", "DoctorName") || "Unknown doctor";
+
+                const meds = get(p, "medicines", "Medicines") || [];
+                const medsText = Array.isArray(meds) && meds.length > 0
+                  ? meds
+                      .slice(0, 3)
+                      .map((m) => {
+                        const mid = m.medicineId ?? m.MedicineId;
+                        const qty = m.quantity ?? m.Quantity;
+                        return `#${mid} x${qty}`;
+                      })
+                      .join(", ") + (meds.length > 3 ? ` +${meds.length - 3} more` : "")
+                  : "No meds";
+
+                return (
+                  <option key={id} value={id}>
+                    #{id} • Dr: {doctor} • {medsText}
+                  </option>
+                );
+              })}
+
+            </select>
+
+        <button
+          type="button"
+          onClick={async () => {
+            if (!myPrescriptions.length) return alert("No prescriptions found.");
+            const sorted = [...myPrescriptions].sort(
+              (a, b) => new Date(get(b, "dateIssued", "DateIssued")) - new Date(get(a, "dateIssued", "DateIssued"))
+            );
+            const latest = sorted[0];
+            const id = get(latest, "id", "Id");
+            setSelectedPrescriptionId(String(id));
+            setPrescriptionId(String(id));
+            await applyPrescriptionToCart(String(id));
+          }}
+          className="mt-3 w-full h-10 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition"
+        >
+          Use latest prescription
+        </button>
+
+
+
 
                 <div className="mt-4">
                   {cart.length === 0 ? (
@@ -779,8 +919,13 @@ async function reactivateSupplier(id) {
               ) : (
                 <div className="space-y-3">
                   {prescriptions.map((rx) => (
-                    <PrescriptionRow key={get(rx, "id", "Id")} rx={rx} />
-                  ))}
+                  <PrescriptionRow
+                    key={get(rx, "id", "Id")}
+                    rx={rx}
+                    onAddToInvoice={addPrescriptionToInvoice}
+                  />
+                    ))}
+
                 </div>
               )}
             </div>
@@ -962,38 +1107,79 @@ function InvoiceRow({ inv }) {
   );
 }
 
-function PrescriptionRow({ rx }) {
+function PrescriptionRow({ rx, onAddToInvoice }) {
   const id = get(rx, "id", "Id");
-  const patient = get(rx, "patientId", "PatientId") || get(rx, "patientName", "PatientName");
+  const patient = get(rx, "patientName", "PatientName") || get(rx, "patientId", "PatientId");
   const doctor = get(rx, "doctorName", "DoctorName");
   const status = get(rx, "status", "Status");
-  const created = get(rx, "dateCreated", "DateCreated") || get(rx, "createdAt", "CreatedAt");
+  const issued = get(rx, "dateIssued", "DateIssued");
+
+  const meds = get(rx, "medicines", "Medicines") || [];
 
   return (
     <div className="rounded-2xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-semibold text-gray-900 truncate">Prescription #{id}</div>
+          <div className="font-semibold text-gray-900 truncate">
+            Prescription #{id}
+          </div>
           <div className="text-xs text-gray-500 mt-1">
             {patient ? `Patient: ${patient} • ` : ""}
             {doctor ? `Doctor: ${doctor}` : ""}
           </div>
+          {issued && (
+            <div className="text-xs text-gray-400 mt-1">
+              Issued: {new Date(issued).toLocaleDateString()}
+            </div>
+          )}
         </div>
-        {status !== undefined && (
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700">
-            {String(status)}
-          </span>
-        )}
+
+        <div className="flex flex-col items-end gap-2">
+          {status !== undefined && (
+            <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700">
+              {String(status)}
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onAddToInvoice(id)}
+            className="px-3 h-9 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition"
+          >
+            Add to invoice
+          </button>
+        </div>
       </div>
 
-      {created && (
-        <div className="text-xs text-gray-400 mt-2">
-          {new Date(created).toLocaleString()}
-        </div>
-      )}
+      {/* Medicines + quantities */}
+      <div className="mt-3">
+        <div className="text-xs font-medium text-gray-700 mb-2">Medicines</div>
+
+        {!Array.isArray(meds) || meds.length === 0 ? (
+          <div className="text-xs text-gray-400">No medicines</div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {meds.map((m, idx) => {
+              const medId = m.medicineId ?? m.MedicineId;
+              const qty = m.quantity ?? m.Quantity;
+
+              return (
+                <span
+                  key={`${id}-${medId}-${idx}`}
+                  className="text-xs px-2 py-1 rounded-xl border bg-white"
+                >
+                  Med #{medId} • Qty: {qty}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+
 
 function SupplierRow({ s, onDeactivate, onReactivate }) {
   const id = get(s, "id", "Id");
