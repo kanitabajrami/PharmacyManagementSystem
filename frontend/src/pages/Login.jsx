@@ -146,23 +146,6 @@ export default function Login() {
                   {loading ? "Logging in..." : "Log In"}
                 </button>
 
-                <div className="text-center text-sm text-gray-500">
-                  Don&apos;t have an account?{" "}
-                  <span
-                    className="text-indigo-600 hover:underline cursor-pointer font-medium"
-                    onClick={() => navigate("/register")}
-                  >
-                    Sign up
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-7 pt-5 border-t border-gray-100 text-xs text-gray-500">
-                If login fails, confirm the backend is reachable at{" "}
-                <span className="font-medium text-gray-700">
-                  https://localhost:7201
-                </span>
-                .
               </div>
             </form>
 
