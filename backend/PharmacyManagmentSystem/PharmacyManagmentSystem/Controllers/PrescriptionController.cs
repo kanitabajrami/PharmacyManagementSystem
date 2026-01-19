@@ -41,6 +41,33 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(PrescriptionMapper.toDto(prescription));
         }
 
+
+        [HttpGet("search")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> Search(
+            [FromQuery] string? embg,
+            [FromQuery] string? patientName,
+            [FromQuery] string? doctorName)
+        {
+            embg = embg?.Trim();
+            patientName = patientName?.Trim();
+            doctorName = doctorName?.Trim();
+
+            // optional: validate EMBG if provided (13 digits)
+            if (!string.IsNullOrWhiteSpace(embg))
+            {
+                if (embg.Length != 13 || !embg.All(char.IsDigit))
+                    return BadRequest("EMBG must be exactly 13 digits.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(embg) && !embg.All(char.IsDigit))
+                return BadRequest(new { message = "EMBG must contain only numbers." });
+
+
+            var results = await _repository.SearchAsync(embg, patientName, doctorName);
+            return Ok(results.Select(PrescriptionMapper.toDto));
+        }
+
         // POST: api/Prescription
         [HttpPost]
         [Authorize(Roles ="Admin")]
@@ -51,6 +78,9 @@ namespace PharmacyManagmentSystem.Controllers
 
             try
             {
+                if (await _repository.EmbgExistsAsync(dto.EMBG))
+                    return BadRequest(new { message = "EMBG already exists." });
+
                 var prescription = PrescriptionMapper.ToEntity(dto);        // Map DTO to entity
 
                 await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
@@ -98,24 +128,7 @@ namespace PharmacyManagmentSystem.Controllers
             await _repository.DeleteAsync(id);
             return NoContent();
         }
-
-        // GET: api/Prescription/patient/{patientId}
-        [HttpGet("patient/{patientId}")]
-        [Authorize(Roles ="User")]
-        public async Task<IActionResult> GetByPatient(string patientId)
-        {
-            var prescriptions = await _repository.GetByPatientAsync(patientId);
-            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
-        }
-
-        // GET: api/Prescription/doctor/{doctorName}
-        [HttpGet("doctor/{doctorName}")]
-        [Authorize(Roles = "User")]
-        public async Task<IActionResult> GetByDoctor(string doctorName)
-        {
-            var prescriptions = await _repository.GetByDoctorAsync(doctorName);
-            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
-        }
+ 
 
         // GET: api/Prescription/missing-medicines
         [HttpGet("missing-medicines")]

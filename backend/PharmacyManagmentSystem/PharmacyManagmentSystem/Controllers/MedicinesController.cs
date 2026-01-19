@@ -40,7 +40,7 @@ namespace PharmacyManagmentSystem.Controllers
 
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Create([FromBody] MedicineDto dto)
         {
 

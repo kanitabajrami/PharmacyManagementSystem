@@ -10,7 +10,7 @@ namespace PharmacyManagmentSystem.Helpers
         {
             return new Prescription
             {
-                PatientId = dto.PatientId,
+                EMBG = dto.EMBG,
                 PatientName = dto.PatientName,
                 DoctorName = dto.DoctorName,
                 DateIssued = dto.DateIssued,
@@ -26,7 +26,7 @@ namespace PharmacyManagmentSystem.Helpers
         // This is used for PUT
         public static void UpdateEntity(Prescription entity, PrescriptionDto dto)
         {
-            entity.PatientId = dto.PatientId;
+            entity.EMBG = dto.EMBG;
             entity.PatientName = dto.PatientName;
             entity.DoctorName = dto.DoctorName;
             entity.DateIssued = dto.DateIssued;
@@ -48,7 +48,7 @@ namespace PharmacyManagmentSystem.Helpers
             return new PrescriptionResponseDto
             {
                 Id = entity.Id,
-                PatientId = entity.PatientId,
+                EMBG = entity.EMBG,
                 PatientName = entity.PatientName,
                 DoctorName = entity.DoctorName,
                 DateIssued = entity.DateIssued,

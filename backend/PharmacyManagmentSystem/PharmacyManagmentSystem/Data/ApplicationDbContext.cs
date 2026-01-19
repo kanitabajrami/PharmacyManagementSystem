@@ -65,11 +65,14 @@ namespace PharmacyManagmentSystem.Data
                 .HasForeignKey(i => i.PrescriptionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-
             // PrescriptionMedicine (join table)
             // Composite key: (PrescriptionId, MedicineId)
             modelBuilder.Entity<PrescriptionMedicine>()
                 .HasKey(pm => new { pm.PrescriptionId, pm.MedicineId });
+
+            modelBuilder.Entity<Prescription>()
+                .HasIndex(p => p.EMBG)
+                .IsUnique();
 
             modelBuilder.Entity<PrescriptionMedicine>()
                 .HasOne(pm => pm.Prescription)

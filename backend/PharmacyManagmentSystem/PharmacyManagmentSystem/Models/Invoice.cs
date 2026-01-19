@@ -6,8 +6,6 @@ public class Invoice
     public int Id { get; set; }
     public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
-    public string? CustomerName { get; set; }
-
     public decimal TotalAmount { get; set; }
 
     public ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();

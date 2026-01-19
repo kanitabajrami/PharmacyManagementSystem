@@ -36,21 +36,65 @@ namespace PharmacyManagmentSystem.Controllers
         [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
-            var invoice = await _invoiceRepo.GetByIdAsync(id);
-            if (invoice == null) return NotFound($"Invoice with id {id} not found.");
+            var invoice = await _db.Invoices
+                .Include(i => i.User)
+                .Include(i => i.InvoiceItems)
+                    .ThenInclude(ii => ii.Medicine)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (invoice == null)
+                return NotFound($"Invoice with id {id} not found.");
+
+            // Admin can view any invoice
+            if (User.IsInRole("Admin"))
+                return Ok(InvoiceMapper.ToResponseDto(invoice));
+
+            // Regular user can only view their own invoice
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized("User is not authenticated.");
+
+            if (invoice.UserId != userId)
+                return Forbid();
+
             return Ok(InvoiceMapper.ToResponseDto(invoice));
         }
 
 
-        [HttpGet("user/{userId}")]
-        [Authorize(Roles ="Admin")]
-        public async Task<IActionResult> GetByUser(string userId)
+        //[HttpGet("{id:int}")]
+        //[Authorize]
+        //public async Task<IActionResult> GetById(int id)
+        //{
+        //    var invoice = await _invoiceRepo.GetByIdAsync(id);
+        //    if (invoice == null) return NotFound($"Invoice with id {id} not found.");
+        //    return Ok(InvoiceMapper.ToResponseDto(invoice));
+        //}
+
+
+        //[HttpGet("user/{userId}")]
+        //[Authorize(Roles ="Admin")]
+        //public async Task<IActionResult> GetByUser(string userId)
+        //{
+        //    var invoices = await _invoiceRepo.GetByUserAsync(userId);
+        //    return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
+        //}
+
+        [HttpGet("user/by-username/{username}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetByUsername(string username)
         {
-            var invoices = await _invoiceRepo.GetByUserAsync(userId);
+            if (string.IsNullOrWhiteSpace(username))
+                return BadRequest("Username is required.");
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == username);
+            if (user == null)
+                return NotFound($"User '{username}' not found.");
+
+            var invoices = await _invoiceRepo.GetByUserAsync(user.Id);
             return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
 
-        
+
         [HttpGet("range")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetByDateRange([FromQuery] DateTime start, [FromQuery] DateTime end)
@@ -117,8 +161,7 @@ namespace PharmacyManagmentSystem.Controllers
 
             // 4) Build invoice entity (server-side prices/totals)
             var invoice = new Invoice
-            {
-                CustomerName = dto.CustomerName,
+            { 
                 UserId = userId,
                 PrescriptionId = dto.PrescriptionId,
                 DateCreated = DateTime.UtcNow
@@ -178,4 +221,6 @@ namespace PharmacyManagmentSystem.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, InvoiceMapper.ToResponseDto(created));
         }
     }
+
+
 }

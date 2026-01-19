@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PharmacyManagmentSystem.Models;
 
 namespace PharmacyManagmentSystem.Controllers
@@ -28,7 +29,7 @@ namespace PharmacyManagmentSystem.Controllers
             {
                 var roles = await _userManager.GetRolesAsync(user);
                 result.Add(new
-                {
+                {   
                     user.Id,
                     user.UserName,
                     user.Email,

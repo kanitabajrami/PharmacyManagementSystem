@@ -5,8 +5,6 @@ namespace PharmacyManagmentSystem.DTOs
         // ========= POST (Create Invoice) =========
         public class CreateInvoiceDto
         {
-            public string? CustomerName { get; set; }
-
             public int? PrescriptionId { get; set; }
 
             [Required]
@@ -29,7 +27,6 @@ namespace PharmacyManagmentSystem.DTOs
             public int Id { get; set; }
             public DateTime DateCreated { get; set; }
 
-            public string? CustomerName { get; set; }
             public decimal TotalAmount { get; set; }
 
             public string UserId { get; set; } = default!;
@@ -58,7 +55,6 @@ namespace PharmacyManagmentSystem.DTOs
             public int Id { get; set; }
             public DateTime DateCreated { get; set; }
 
-            public string? CustomerName { get; set; }
             public decimal TotalAmount { get; set; }
 
             public string UserId { get; set; } = default!;

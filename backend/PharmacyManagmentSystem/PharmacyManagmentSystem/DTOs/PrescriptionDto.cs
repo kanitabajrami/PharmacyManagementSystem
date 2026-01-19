@@ -5,7 +5,9 @@ namespace PharmacyManagmentSystem.DTOs
     public class PrescriptionDto
     {
         [Required]
-        public string PatientId { get; set; }
+        [RegularExpression(@"^\d{13}$", ErrorMessage = "EMBG must be exactly 13 digits.")]
+        public string EMBG { get; set; }
+
         [Required]
         public string PatientName { get; set; }
         [Required]
@@ -27,7 +29,7 @@ namespace PharmacyManagmentSystem.DTOs
     public class PrescriptionResponseDto
     {
         public int Id { get; set; }
-        public string PatientId { get; set; }
+        public string EMBG { get; set; }
         public string PatientName { get; set; }
         public string DoctorName { get; set; }
         public DateTime DateIssued { get; set; }

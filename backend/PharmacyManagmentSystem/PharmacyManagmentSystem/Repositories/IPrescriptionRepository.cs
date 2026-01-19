@@ -1,4 +1,5 @@
-﻿using PharmacyManagmentSystem.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using PharmacyManagmentSystem.Models;
 
 namespace PharmacyManagmentSystem.Repositories
 {
@@ -10,8 +11,10 @@ namespace PharmacyManagmentSystem.Repositories
         Task UpdateAsync(Prescription prescription);
         Task DeleteAsync(int id);
 
-        Task<IEnumerable<Prescription>> GetByPatientAsync(string id);
-        Task<IEnumerable<Prescription>> GetByDoctorAsync(string name);
+        Task<IEnumerable<Prescription>> SearchAsync(string? embg, string? patientName, string? doctorName);
+
+        Task<bool> EmbgExistsAsync(string embg);
+
         //Task<IEnumerable<Prescription>> GetExpiredPrescriptions();      //mund te largohet
         //Task<bool> IsExpiredAsync(int id);    //mund te largohet
     }

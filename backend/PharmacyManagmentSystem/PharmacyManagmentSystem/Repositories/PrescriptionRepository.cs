@@ -29,7 +29,7 @@ namespace PharmacyManagmentSystem.Repositories
             if (prescription == null)
                 throw new ArgumentNullException(nameof(prescription));
 
-            if (string.IsNullOrWhiteSpace(prescription.PatientId))
+            if (string.IsNullOrWhiteSpace(prescription.EMBG))
                 throw new ArgumentException("Patient ID is required.");
 
             if (string.IsNullOrWhiteSpace(prescription.PatientName))
@@ -55,16 +55,54 @@ namespace PharmacyManagmentSystem.Repositories
                 await _dbcontext.SaveChangesAsync();
             }
         }
-        public async Task<IEnumerable<Prescription>> GetByPatientAsync(string id)
+
+      
+
+    public async Task<IEnumerable<Prescription>> SearchAsync(string? embg,  string? patientName, string? doctorName)
         {
-            // Search prescription by patient id
-            return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(p => p.PatientId == id).ToListAsync();
+            var q = _dbcontext.Prescriptions
+                .AsNoTracking()
+                .Include(p => p.PrescriptionMedicines)
+                    .ThenInclude(pm => pm.Medicine)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(embg))
+            {
+                var e = embg.Trim();
+                // exact match (recommended for EMBG)
+                q = q.Where(p => p.EMBG == e);
+
+                // If you want "contains" search instead, use this:
+                // q = q.Where(p => p.EMBG != null && EF.Functions.ILike(p.EMBG, $"%{e}%"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(patientName))
+            {
+                var pn = $"%{patientName.Trim()}%";
+                q = q.Where(p => p.PatientName != null && EF.Functions.ILike(p.PatientName, pn));
+            }
+
+            if (!string.IsNullOrWhiteSpace(doctorName))
+            {
+                var dn = $"%{doctorName.Trim()}%";
+                q = q.Where(p => p.DoctorName != null && EF.Functions.ILike(p.DoctorName, dn));
+            }
+
+            return await q
+                .OrderByDescending(p => p.DateIssued)
+                .ToListAsync();
         }
-        public async Task<IEnumerable<Prescription>> GetByDoctorAsync(string name)
+
+
+
+
+    public async Task<bool> EmbgExistsAsync(string embg)
         {
-            // Case-insensitive search by doctor name
-            return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DoctorName.ToLower() == name.ToLower()).ToListAsync();
+            embg = embg.Trim();
+            return await _dbcontext.Prescriptions.AnyAsync(p => p.EMBG == embg);
         }
+
+
         //public async Task<IEnumerable<Prescription>> GetExpiredPrescriptions()
         //{
         //    return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DateIssued.AddDays(30) < DateTime.UtcNow).ToListAsync();

@@ -9,7 +9,6 @@ namespace PharmacyManagmentSystem.Helpers
         {
             Id = inv.Id,
             DateCreated = inv.DateCreated,
-            CustomerName = inv.CustomerName,
             TotalAmount = inv.TotalAmount,
 
             UserId = inv.UserId,
@@ -36,7 +35,6 @@ namespace PharmacyManagmentSystem.Helpers
         {
             Id = inv.Id,
             DateCreated = inv.DateCreated,
-            CustomerName = inv.CustomerName,
             TotalAmount = inv.TotalAmount,
             UserId = inv.UserId,
             UserName = inv.User != null ? (inv.User.UserName ?? "") : "",
