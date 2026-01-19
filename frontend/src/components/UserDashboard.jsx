@@ -116,13 +116,13 @@ export default function UserDashboard() {
   }
 });
 
-  const [customerName, setCustomerName] = useState("");
   const [prescriptionId, setPrescriptionId] = useState(""); // optional
   const cartTotal = useMemo(
     () => cart.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 0), 0),
     [cart]
   );
 
+  
   // ===== Invoices state =====
   const [invLoading, setInvLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
@@ -130,7 +130,8 @@ export default function UserDashboard() {
   // ===== Prescriptions state =====
   const [rxLoading, setRxLoading] = useState(true);
   const [prescriptions, setPrescriptions] = useState([]);
-  const [patientId, setPatientId] = useState("");
+  const [embg, setEmbg] = useState("");
+  const [patientName, setPatientName] = useState("");
   const [doctorName, setDoctorName] = useState("");
   const [myPrescriptions, setMyPrescriptions] = useState([]);
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
@@ -233,33 +234,38 @@ export default function UserDashboard() {
     }
   }
 
-  async function loadPrescriptionsByPatient() {
-    if (!patientId.trim()) return;
-    setRxLoading(true);
-    setError("");
-    try {
-      const data = await apiFetch(`/api/Prescription/patient/${encodeURIComponent(patientId.trim())}`);
-      setPrescriptions(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e.message || "Failed to load prescriptions by patient.");
-    } finally {
-      setRxLoading(false);
-    }
-  }
+ async function searchPrescriptions() {
+  setRxLoading(true);
+  setError("");
 
-  async function loadPrescriptionsByDoctor() {
-    if (!doctorName.trim()) return;
-    setRxLoading(true);
-    setError("");
-    try {
-      const data = await apiFetch(`/api/Prescription/doctor/${encodeURIComponent(doctorName.trim())}`);
-      setPrescriptions(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e.message || "Failed to load prescriptions by doctor.");
-    } finally {
+  try {
+    const params = new URLSearchParams();
+
+    const e = embg.trim();
+    const pn = patientName.trim();
+    const dn = doctorName.trim();
+
+    // optional: EMBG only numbers
+    if (e && !/^\d+$/.test(e)) {
+      setError("EMBG must contain only numbers.");
       setRxLoading(false);
+      return;
     }
+
+    if (e) params.set("embg", e);
+    if (pn) params.set("patientName", pn);
+    if (dn) params.set("doctorName", dn);
+
+    const data = await apiFetch(`/api/Prescription/search?${params.toString()}`);
+    setPrescriptions(Array.isArray(data) ? data : []);
+  } catch (e) {
+    setError(e.message || "Search failed.");
+  } finally {
+    setRxLoading(false);
   }
+}
+
+
 
   async function loadSuppliers() {
     setSupLoading(true);
@@ -346,17 +352,13 @@ export default function UserDashboard() {
     if (cart.length === 0) {
       alert("Cart is empty.");
       return;
+   
     }
-    if (!customerName.trim()) {
-      alert("Please enter customer name.");
-      return;
-    }
+   const payload = {
+    items: cart.map((c) => ({ medicineId: c.medicineId, quantity: c.qty })),
+    ...(prescriptionId.trim() ? { prescriptionId: Number(prescriptionId) } : {}),
+  };
 
-    const payload = {
-      customerName: customerName.trim(),
-      items: cart.map((c) => ({ medicineId: c.medicineId, quantity: c.qty })),
-      ...(prescriptionId.trim() ? { prescriptionId: Number(prescriptionId) } : {}),
-    };
 
     try {
       await apiFetch("/api/invoices", {
@@ -366,7 +368,6 @@ export default function UserDashboard() {
 
       alert("Invoice created!");
       setCart([]);
-      setCustomerName("");
       setPrescriptionId("");
 
   
@@ -453,12 +454,6 @@ async function applyPrescriptionToCart(pId) {
     });
 
     setCart(nextCart);
-
-    // Optional: auto-fill customer name from patient name
-    if (!customerName.trim()) {
-      const pn = rx?.patientName || rx?.PatientName;
-      if (pn) setCustomerName(pn);
-    }
 
     alert("Prescription medicines added to cart.");
   } catch (e) {
@@ -686,27 +681,12 @@ async function addPrescriptionToInvoice(rxId) {
 
             {/* Cart / Create invoice */}
             <div className="bg-white rounded-3xl border shadow-sm sticky top-[76px] h-fit">
-              <div className="p-5 border-b">
-                <h2 className="text-lg font-semibold text-gray-900">Cart</h2>
-                <p className="text-sm text-gray-500">Create invoice (User role).</p>
-              </div>
+             
 
               <div className="p-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer name
-                </label>
-                <input
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
-
-                
                <label className="block text-sm font-medium text-gray-700 mb-2">
-  Select Prescription
-</label>
+                Select Prescription
+              </label>
 
             <select
               value={selectedPrescriptionId}
@@ -813,9 +793,7 @@ async function addPrescriptionToInvoice(rxId) {
                   Clear cart
                 </button>
 
-                <div className="mt-4 text-xs text-gray-400">
-                  If you get 403 here, your token is not in role <span className="font-medium">User</span>.
-                </div>
+                
               </div>
             </div>
           </div>
@@ -865,12 +843,7 @@ async function addPrescriptionToInvoice(rxId) {
           <div className="bg-white rounded-3xl border shadow-sm">
             <div className="p-5 border-b">
               <div className="flex items-start sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Prescriptions</h2>
-                  <p className="text-sm text-gray-500">
-                    Search by patientId or doctorName (User endpoints).
-                  </p>
-                </div>
+                
                 <div className="flex gap-2">
                   <button
                     onClick={loadPrescriptionsAll}
@@ -878,37 +851,60 @@ async function addPrescriptionToInvoice(rxId) {
                   >
                     All
                   </button>
-                  <button
-                    onClick={loadPrescriptionsByPatient}
-                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
-                  >
-                    By patient
-                  </button>
-                  <button
-                    onClick={loadPrescriptionsByDoctor}
-                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
-                  >
-                    By doctor
-                  </button>
+                
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  placeholder="patientId…"
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
-                <input
-                  value={doctorName}
-                  onChange={(e) => setDoctorName(e.target.value)}
-                  placeholder="doctorName…"
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                             focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
-              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                value={embg}
+                onChange={(e) => setEmbg(e.target.value)}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="EMBG"
+                 className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                          focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+              />
+
+
+              <input
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                placeholder="Patient name…"
+                className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                          focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+              />
+
+              <input
+                value={doctorName}
+                onChange={(e) => setDoctorName(e.target.value)}
+                placeholder="Doctor name…"
+                className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                          focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+              />
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={searchPrescriptions}
+                className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+              >
+                Search
+              </button>
+
+              <button
+                onClick={() => {
+                  setEmbg("");
+                  setPatientName("");
+                  setDoctorName("");
+                  loadPrescriptionsAll();
+                }}
+                className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+              >
+                Clear
+              </button>
+            </div>
+
             </div>
 
             <div className="p-5">
@@ -937,9 +933,7 @@ async function addPrescriptionToInvoice(rxId) {
             <div className="p-5 border-b flex items-start sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
-                <p className="text-sm text-gray-500">
-                  Read-only list (GET endpoints).
-                </p>
+              
               </div>
               <div className="flex gap-2">
                 <button
@@ -977,10 +971,7 @@ async function addPrescriptionToInvoice(rxId) {
               </div>
             )}
 
-              <div className="mt-4 text-xs text-gray-400">
-                Your backend currently allows any authenticated user to deactivate/reactivate suppliers.
-                I didn’t put those buttons here (safer UX).
-              </div>
+           
             </div>
           </div>
         )}
@@ -1082,7 +1073,6 @@ function CartRow({ item, onMinus, onPlus, onRemove }) {
 
 function InvoiceRow({ inv }) {
   const id = get(inv, "id", "Id");
-  const customer = get(inv, "customerName", "CustomerName") || "Customer";
   const total = Number(get(inv, "totalAmount", "TotalAmount") || 0);
   const date = get(inv, "dateCreated", "DateCreated");
   const userName = get(inv, "userName", "UserName");
@@ -1091,7 +1081,7 @@ function InvoiceRow({ inv }) {
     <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <div className="font-semibold text-gray-900 truncate">
-          Invoice #{id} • {customer}
+          Invoice #{id} 
         </div>
         <div className="text-xs text-gray-500 mt-1">
           {date ? new Date(date).toLocaleString() : ""}

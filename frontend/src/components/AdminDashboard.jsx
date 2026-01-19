@@ -105,6 +105,7 @@ export default function AdminDashboard() {
   const [invoiceUserId, setInvoiceUserId] = useState("");
   const [invoiceStart, setInvoiceStart] = useState("");
   const [invoiceEnd, setInvoiceEnd] = useState("");
+  const [username, setUsername] = useState("")
 
     // ===== Prescriptions state =====
   const [rxLoading, setRxLoading] = useState(true);              // Loading state for prescription list
@@ -452,16 +453,22 @@ export default function AdminDashboard() {
     }
   }
 
-  async function loadInvoicesByUser(userId) {
-    if (!userId) return;
-    setInvLoading(true);
-    try {
-      const data = await apiFetch(`/api/invoices/user/${userId}`);
-      setInvoices(data || []);
-    } finally {
-      setInvLoading(false);
-    }
+ async function loadInvoicesByUser() {
+  setInvLoading(true);
+  setError("");
+  try {
+    const data = await apiFetch(
+  `/api/invoices/user/by-username/${encodeURIComponent(username)}`
+);
+setInvoices(Array.isArray(data) ? data : []);
+
+    setInvoices(Array.isArray(data) ? data : []);
+  } catch (e) {
+    setError(e.message || "Failed to load invoices.");
+  } finally {
+    setInvLoading(false);
   }
+}
 
   async function loadInvoicesByDateRange(start, end) {
     if (!start || !end) return;
@@ -956,11 +963,10 @@ export default function AdminDashboard() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
                 {/* User ID */}
                 <input
-                  value={invoiceUserId}
-                  onChange={(e) => setInvoiceUserId(e.target.value)}
-                  placeholder="User ID"
-                  className="h-10 px-3 rounded-xl border text-sm outline-none
-                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Filter by username…"
+                  className="h-10 px-3 rounded-xl border text-sm"
                 />
 
                 {/* Start date */}
