@@ -804,9 +804,6 @@ async function addPrescriptionToInvoice(rxId) {
             <div className="p-5 border-b flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
-                <p className="text-sm text-gray-500">
-                  Loaded from <span className="font-medium">GET /api/invoices</span>.
-                </p>
               </div>
               <button
                 onClick={loadInvoices}

@@ -73,10 +73,6 @@ export default function Login() {
                   <div className="text-white/80">Role-based access</div>
                 </div>
               </div>
-
-              <div className="pt-4 text-xs text-white/70">
-                Tip: Use your admin/user credentials to get routed automatically.
-              </div>
             </div>
           </div>
         </div>
