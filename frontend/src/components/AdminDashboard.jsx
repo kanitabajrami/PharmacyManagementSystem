@@ -110,9 +110,10 @@ export default function AdminDashboard() {
     // ===== Prescriptions state =====
   const [rxLoading, setRxLoading] = useState(true);              // Loading state for prescription list
   const [prescriptions, setPrescriptions] = useState([]);        // List of prescriptions
-  const [newPrescription, setNewPrescription] = useState({ patientId: "", patientName: "", doctorName: "", medicines: [],});
+  const [newPrescription, setNewPrescription] = useState({ embg: "", patientName: "", doctorName: "", medicines: [],});
   const [missingMedicines, setMissingMedicines] = useState([]); // List of missing medicines
-  const [prescriptionCreating, setPrescriptionCreating] = useState(false);          // Loading state for creating prescription
+  const [prescriptionCreating, setPrescriptionCreating] = useState(false); 
+           // Loading state for creating prescription
 
   // ===== Suppliers state =====
   const [supLoading, setSupLoading] = useState(true);
@@ -202,82 +203,89 @@ export default function AdminDashboard() {
   }
 
   async function createPrescription() {
-    setPrescriptionCreating(true);
+  setPrescriptionCreating(true);
 
-    try {
-      // Basic validation
-      if (!newPrescription.patientName || !newPrescription.doctorName) {
-        alert("Patient name and doctor name are required.");
-        return;
-      }
-
-      if (!Array.isArray(newPrescription.medicines) || newPrescription.medicines.length === 0) {
-        alert("You must add at least one medicine.");
-        return;
-      }
-
-      // Clean medicines list:
-      // - remove empty rows
-      // - ensure valid quantity
-      const cleanedMedicines = newPrescription.medicines
-        .filter(m => m.medicineId && m.quantity > 0)
-        .map(m => ({
-          medicineId: Number(m.medicineId),
-          quantity: Number(m.quantity),
-        }));
-
-      if (cleanedMedicines.length === 0) {
-        alert("No valid medicines found.");
-        return;
-      }
-
-      // Remove duplicates (merge quantities)
-      const mergedMedicines = Object.values(
-        cleanedMedicines.reduce((acc, m) => {
-          if (!acc[m.medicineId]) {
-            acc[m.medicineId] = { ...m };
-          } else {
-            acc[m.medicineId].quantity += m.quantity;
-          }
-          return acc;
-        }, {})
-      );
-
-      // Final DTO
-      const dto = {
-        patientId: newPrescription.patientId || null,
-        patientName: newPrescription.patientName.trim(),
-        doctorName: newPrescription.doctorName.trim(),
-        medicines: mergedMedicines,
-      };
-
-      // POST
-      await apiFetch("/api/Prescription", {
-        method: "POST",
-        body: JSON.stringify(dto),
-      });
-
-      alert("Prescription added successfully!");
-
-      //Reset form
-      setNewPrescription({
-        patientId: "",
-        patientName: "",
-        doctorName: "",
-        medicines: [],
-      });
-
-      // Refresh data
-      await loadPrescriptionsAll();
-      await loadMissingMedicines();
-
-    } catch (e) {
-      console.error("Failed POST /api/Prescription:", e);
-      alert(e.message || "Failed to add prescription.");
-    } finally {
-      setPrescriptionCreating(false);
+  try {
+    // ✅ EMBG validation
+    const embg = String(newPrescription.embg || "").trim();
+    if (!embg) {
+      alert("EMBG is required.");
+      return;
     }
+    if (!/^\d+$/.test(embg)) {
+      alert("EMBG must contain only numbers.");
+      return;
+    }
+
+    // Basic validation
+    if (!newPrescription.patientName || !newPrescription.doctorName) {
+      alert("Patient name and doctor name are required.");
+      return;
+    }
+
+    if (!Array.isArray(newPrescription.medicines) || newPrescription.medicines.length === 0) {
+      alert("You must add at least one medicine.");
+      return;
+    }
+
+    // Clean medicines list
+    const cleanedMedicines = newPrescription.medicines
+      .filter(m => m.medicineId && m.quantity > 0)
+      .map(m => ({
+        medicineId: Number(m.medicineId),
+        quantity: Number(m.quantity),
+      }));
+
+    if (cleanedMedicines.length === 0) {
+      alert("No valid medicines found.");
+      return;
+    }
+
+    // Remove duplicates (merge quantities)
+    const mergedMedicines = Object.values(
+      cleanedMedicines.reduce((acc, m) => {
+        if (!acc[m.medicineId]) acc[m.medicineId] = { ...m };
+        else acc[m.medicineId].quantity += m.quantity;
+        return acc;
+      }, {})
+    );
+
+    // ✅ Final DTO (IMPORTANT: backend error shows "EMBG", so send "EMBG")
+    const dto = {
+      EMBG: embg,
+      PatientName: newPrescription.patientName.trim(),
+      DoctorName: newPrescription.doctorName.trim(),
+      Medicines: mergedMedicines.map(m => ({
+        MedicineId: m.medicineId,
+        Quantity: m.quantity,
+      })),
+    };
+
+    await apiFetch("/api/Prescription", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+
+    alert("Prescription added successfully!");
+
+    // ✅ Reset form
+    setNewPrescription({
+      embg: "",
+      patientName: "",
+      doctorName: "",
+      medicines: [],
+    });
+
+    await loadPrescriptionsAll();
+    await loadMissingMedicines();
+  } catch (e) {
+    console.error("Failed POST /api/Prescription:", e);
+    alert(e.message || "Failed to add prescription.");
+  } finally {
+    setPrescriptionCreating(false);
   }
+}
+
 
   async function deletePrescription(id) {
     if (!confirm("Delete this prescription?")) return;
@@ -1097,33 +1105,41 @@ setInvoices(Array.isArray(data) ? data : []);
 
               <div className="space-y-4">
                 {/* Patient Info */}
-                <input
-                  value={newPrescription.patientId}
-                  onChange={(e) =>
-                    setNewPrescription({ ...newPrescription, patientId: e.target.value })
-                  }
-                  placeholder="EMBG"
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
-                <input
-                  value={newPrescription.patientName}
-                  onChange={(e) =>
-                    setNewPrescription({ ...newPrescription, patientName: e.target.value })
-                  }
-                  placeholder="Patient Name "
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
-                <input
-                  value={newPrescription.doctorName}
-                  onChange={(e) =>
-                    setNewPrescription({ ...newPrescription, doctorName: e.target.value })
-                  }
-                  placeholder="Doctor Name "
-                  className="w-full h-10 px-3 rounded-xl border text-sm outline-none
-                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                />
+              <input
+              value={newPrescription.embg}
+              onChange={(e) =>
+                setNewPrescription((prev) => ({
+                  ...prev,
+                  embg: e.target.value.replace(/\D/g, ""), // keep only digits
+                }))
+              }
+              placeholder="EMBG"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                        focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            />
+
+            <input
+              value={newPrescription.patientName}
+              onChange={(e) =>
+                setNewPrescription((prev) => ({ ...prev, patientName: e.target.value }))
+              }
+               placeholder="Patient Name"
+              className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                        focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            />
+
+            <input
+              value={newPrescription.doctorName}
+              onChange={(e) =>
+                setNewPrescription((prev) => ({ ...prev, doctorName: e.target.value }))
+              }
+               placeholder="Doctor Name"
+              className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                        focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            />
+
 
                 {/* Medicines */}
                 <div className="space-y-2">
