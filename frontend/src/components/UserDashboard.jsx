@@ -961,12 +961,14 @@ async function addPrescriptionToInvoice(rxId) {
             ) : (
               <div className="space-y-3">
                {suppliersView.map((s) => (
-              <SupplierRow
-                key={get(s, "id", "Id")}
-                s={s}
-                onDeactivate={deactivateSupplier}
-                onReactivate={reactivateSupplier}
-              />
+             <SupplierRow
+              key={get(s, "id", "Id")}
+              s={s}
+              onToggle={(id, isActive) =>
+                isActive ? deactivateSupplier(id) : reactivateSupplier(id)
+              }
+            />
+
             ))}   
               </div>
             )}
@@ -1171,64 +1173,40 @@ function PrescriptionRow({ rx, onAddToInvoice }) {
 
 
 
-function SupplierRow({ s, onDeactivate, onReactivate }) {
+function SupplierRow({ s, onToggle }) {
   const id = get(s, "id", "Id");
-  const name = get(s, "name", "Name") || "Supplier";
-  const contact = get(s, "contactInfo", "ContactInfo");
-  const medicinesCount = get(s, "medicinesCount", "MedicinesCount");
-
-  // optional status if your DTO includes it
-  const isActive = get(s, "isActive", "IsActive", "active", "Active");
+  const isActive = get(s, "isActive", "IsActive");
 
   return (
-    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3">
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3 bg-white hover:bg-gray-50 transition">
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="font-semibold text-gray-900 truncate">{name}</div>
-
-          {isActive !== undefined && (
-            <span
-              className={
-                "text-xs px-2 py-0.5 rounded-full border " +
-                (isActive
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-red-50 text-red-700 border-red-200")
-              }
-            >
-              {isActive ? "Active" : "Inactive"}
-            </span>
-          )}
+        <div className="font-semibold text-gray-900 truncate">
+          {get(s, "name", "Name")}
         </div>
-
-        <div className="text-xs text-gray-500 mt-1">
-          {contact ? `Contact: ${contact}` : "No contact info"}
-          {medicinesCount !== undefined ? ` • Medicines: ${medicinesCount}` : ""}
+        <div className="text-xs text-gray-500 truncate">
+          {get(s, "email", "Email")} • {get(s, "phone", "Phone")}
         </div>
       </div>
 
-      {/* ✅ Buttons */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex gap-2">
+        {/* ✅ Toggle button */}
         <button
           type="button"
-          onClick={() => onDeactivate(id)}
-          className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+          onClick={() => onToggle(id, isActive)}
+          className={
+            "px-3 h-9 rounded-xl text-sm font-medium transition " +
+            (isActive
+              ? "border bg-white hover:bg-gray-50 text-gray-900"
+              : "text-white bg-indigo-600 hover:bg-indigo-700")
+          }
         >
-          Deactivate
+          {isActive ? "Deactivate" : "Reactivate"}
         </button>
-
-        <button
-          type="button"
-          onClick={() => onReactivate(id)}
-          className="px-3 h-9 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
-        >
-          Reactivate
-        </button>
-
-        <span className="text-xs text-gray-400">#{id}</span>
       </div>
     </div>
   );
 }
+
 
 
 function Empty({ title, text }) {
