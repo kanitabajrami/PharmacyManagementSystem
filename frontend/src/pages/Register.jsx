@@ -1,41 +1,35 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+export default function Register() {
+  const [form, setForm] = useState({
+    userName: "",
+    email: "",
+    password: "",
+  });
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch("https://localhost:7201/api/auth/login", {
+      const response = await fetch("https://localhost:7201/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userNameOrEmail: username, password }),
+        body: JSON.stringify(form),
       });
 
       if (!response.ok) {
-        alert("Invalid username or password");
+        const text = await response.text();
+        alert(text || "Registration failed");
         return;
       }
 
-      const data = await response.json();
-      const token = data.token;
-
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      const roles =
-        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("roles", JSON.stringify(roles));
-
-      if (roles?.includes("Admin")) navigate("/admin");
-      else if (roles?.includes("User")) navigate("/user");
-      else navigate("/login");
+      alert("Account created successfully!");
+      navigate("/login");
     } catch (err) {
       console.error(err);
       alert("Backend server failed");
@@ -47,6 +41,7 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full bg-gray-50">
       <div className="min-h-screen flex">
+
         {/* Left side panel */}
         <div className="hidden md:flex w-1/2 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-600 to-purple-700" />
@@ -56,64 +51,73 @@ export default function Login() {
           <div className="relative z-10 flex h-full w-full items-center justify-center p-12 text-white">
             <div className="max-w-md space-y-5">
               <h1 className="text-4xl font-extrabold tracking-tight">
-                Welcome Back!
+                Create Account
               </h1>
               <p className="text-white/90 text-lg leading-relaxed">
-                Sign in to access your dashboard and manage your pharmacy system
-                efficiently.
+                Register to start managing your pharmacy system with ease.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
-                  <div className="font-semibold">Secure</div>
-                  <div className="text-white/80">JWT authentication</div>
+                  <div className="font-semibold">Simple</div>
+                  <div className="text-white/80">Quick registration</div>
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
-                  <div className="font-semibold">Fast</div>
-                  <div className="text-white/80">Role-based access</div>
+                  <div className="font-semibold">Secure</div>
+                  <div className="text-white/80">Encrypted passwords</div>
                 </div>
-              </div>
-
-              <div className="pt-4 text-xs text-white/70">
-                Tip: Use your admin/user credentials to get routed automatically.
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right side login form */}
+        {/* Right side register form */}
         <div className="flex w-full md:w-1/2 items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-sm">
-            <div className="mb-6 text-center md:hidden">
-              <h2 className="text-2xl font-bold text-gray-900">Welcome Back</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Sign in to continue
-              </p>
-            </div>
 
             <form
-              onSubmit={handleLogin}
+              onSubmit={handleRegister}
               className="bg-white shadow-xl ring-1 ring-black/5 rounded-3xl p-8 sm:p-10"
             >
-              <div className="hidden md:block text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">Login</h2>
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Register
+                </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Enter your credentials to continue
+                  Create your account
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username or Email
+                    Username
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. blenda"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={form.userName}
+                    onChange={(e) =>
+                      setForm({ ...form, userName: e.target.value })
+                    }
                     required
-                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300 bg-white
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
+                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
+                               outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                    required
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
                                focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
                                outline-none transition"
                   />
@@ -125,11 +129,12 @@ export default function Login() {
                   </label>
                   <input
                     type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
                     required
-                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300 bg-white
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
                                focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
                                outline-none transition"
                   />
@@ -143,18 +148,19 @@ export default function Login() {
                              disabled:opacity-60 disabled:cursor-not-allowed
                              transition"
                 >
-                  {loading ? "Logging in..." : "Log In"}
+                  {loading ? "Creating account..." : "Register"}
                 </button>
-                <div className="mt-6 text-center text-sm text-gray-600">
-                  Don’t have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => navigate("/register")}
-                    className="font-semibold text-indigo-600 hover:text-indigo-700 transition"
-                  >
-                    Register
-                  </button>
-                </div>
+              </div>
+
+              <div className="mt-6 text-center text-sm text-gray-600">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/login")}
+                  className="font-semibold text-indigo-600 hover:text-indigo-700 transition"
+                >
+                  Log in
+                </button>
               </div>
             </form>
 
@@ -163,6 +169,7 @@ export default function Login() {
             </p>
           </div>
         </div>
+
       </div>
     </div>
   );
