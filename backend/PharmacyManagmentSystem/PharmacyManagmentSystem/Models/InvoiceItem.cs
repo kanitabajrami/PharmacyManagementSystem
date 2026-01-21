@@ -8,8 +8,7 @@ namespace PharmacyManagmentSystem.Models
 
         public int InvoiceId { get; set; }
         public Invoice? Invoice { get; set; }
-
-        public int MedicineId { get; set; }
+        public int? MedicineId { get; set; }
         public Medicine? Medicine { get; set; }
 
         [Required]

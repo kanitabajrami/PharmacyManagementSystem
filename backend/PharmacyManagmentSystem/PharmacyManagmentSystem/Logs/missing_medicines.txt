@@ -5,3 +5,4 @@
 [1/18/2026 9:40:18 PM] Patient: df, Doctor: doc3, MedicineId: 555, Quantity: 1
 [1/18/2026 9:48:07 PM] Patient: kani, Doctor: doc1, MedicineId: 9, Quantity: 1
 [1/19/2026 12:48:08 AM] Patient: string, Doctor: string, MedicineId: 0, Quantity: 0
+[1/21/2026 4:22:57 PM] Patient: Era, Doctor: Tom, MedicineId: 1, Quantity: 1

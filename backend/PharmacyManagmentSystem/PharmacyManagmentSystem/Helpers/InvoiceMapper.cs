@@ -22,7 +22,7 @@ namespace PharmacyManagmentSystem.Helpers
         public static InvoiceItemResponseDto ToItemResponseDto(InvoiceItem item) => new InvoiceItemResponseDto
         {
             Id = item.Id,
-            MedicineId = item.MedicineId,
+            MedicineId = item.MedicineId ?? null,
             MedicineName = item.Medicine != null ? (item.Medicine.Name ?? "") : "",
 
             Quantity = item.Quantity,

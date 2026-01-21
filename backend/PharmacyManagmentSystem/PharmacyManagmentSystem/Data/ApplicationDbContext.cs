@@ -48,7 +48,7 @@ namespace PharmacyManagmentSystem.Data
                 .HasOne(i => i.Medicine)
                 .WithMany(m => m.InvoiceItems)
                 .HasForeignKey(ii => ii.MedicineId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
 
             // Invoice (many) -> (1) User
@@ -84,7 +84,7 @@ namespace PharmacyManagmentSystem.Data
                 .HasOne(pm => pm.Medicine)
                 .WithMany(m => m.PrescriptionMedicines)
                 .HasForeignKey(pm => pm.MedicineId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             //Quantity must be > 0
             modelBuilder.Entity<PrescriptionMedicine>()

@@ -149,15 +149,21 @@ namespace PharmacyManagmentSystem.Controllers
                 var allowed = prescription.PrescriptionMedicines
                     .ToDictionary(x => x.MedicineId, x => x.Quantity);
 
-            foreach (var it in dto.Items)
-            {
-                if (!allowed.ContainsKey(it.MedicineId))
-                    return BadRequest($"MedicineId {it.MedicineId} is not included in this prescription.");
+                foreach (var it in dto.Items)
+                {
+                    if (!it.MedicineId.HasValue)
+                        return BadRequest("MedicineId is required when invoicing from a prescription.");
 
-                if (it.Quantity > allowed[it.MedicineId])
-                    return BadRequest($"Quantity for MedicineId {it.MedicineId} exceeds prescription allowed amount.");
+                    var mid = it.MedicineId.Value;
+
+                    if (!allowed.ContainsKey(mid))
+                        return BadRequest($"MedicineId {mid} is not included in this prescription.");
+
+                    if (it.Quantity > allowed[mid])
+                        return BadRequest($"Quantity for MedicineId {mid} exceeds prescription allowed amount.");
+                }
+
             }
-        }
 
             // 4) Build invoice entity (server-side prices/totals)
             var invoice = new Invoice

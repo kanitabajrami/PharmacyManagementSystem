@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PharmacyManagmentSystem.Data;
@@ -11,9 +12,11 @@ using PharmacyManagmentSystem.Data;
 namespace PharmacyManagmentSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260121155537_CascadeDeleteMedicineLinks")]
+    partial class CascadeDeleteMedicineLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -262,7 +265,7 @@ namespace PharmacyManagmentSystem.Migrations
                     b.Property<decimal>("LineTotal")
                         .HasColumnType("numeric");
 
-                    b.Property<int?>("MedicineId")
+                    b.Property<int>("MedicineId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Quantity")
@@ -479,7 +482,8 @@ namespace PharmacyManagmentSystem.Migrations
                     b.HasOne("PharmacyManagmentSystem.Models.Medicine", "Medicine")
                         .WithMany("InvoiceItems")
                         .HasForeignKey("MedicineId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Invoice");
 
