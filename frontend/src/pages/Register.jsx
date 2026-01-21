@@ -39,138 +39,132 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-50">
-      <div className="min-h-screen flex">
+  <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen flex">
+      {/* LEFT: simple panel */}
+      <div className="hidden md:flex w-1/2 items-center justify-center p-12">
+        <div className="w-full max-w-md">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-2xl border border-gray-200 bg-white grid place-items-center shadow-sm">
+              <span className="text-gray-900 font-semibold">P</span>
+            </div>
+            <div>
+              <div className="text-xl font-semibold text-gray-900">
+                Pharmacy Management
+              </div>
+            </div>
+          </div>
 
-        {/* Left side panel */}
-        <div className="hidden md:flex w-1/2 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-600 to-purple-700" />
-          <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
-          <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
+          {/* Subtle big shape */}
+          <div className="mt-10 relative">
+            <div className="h-40 rounded-3xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-indigo-100 via-indigo-500 to-indigo-100" />
 
-          <div className="relative z-10 flex h-full w-full items-center justify-center p-12 text-white">
-            <div className="max-w-md space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">
-                Create Account
-              </h1>
-              <p className="text-white/90 text-lg leading-relaxed">
-                Register to start managing your pharmacy system with ease.
-              </p>
-
-              <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
-                  <div className="font-semibold">Simple</div>
-                  <div className="text-white/80">Quick registration</div>
+              <div className="p-5">
+                <div className="text-sm font-semibold text-gray-900">
+                  Create your account
                 </div>
-                <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
-                  <div className="font-semibold">Secure</div>
-                  <div className="text-white/80">Encrypted passwords</div>
+                <div className="text-xs text-gray-500 mt-2">
+                  Register to start managing medicines, prescriptions, invoices, suppliers, and users.
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Right side register form */}
-        <div className="flex w-full md:w-1/2 items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-sm">
+      {/* RIGHT: register */}
+      <div className="flex w-full md:w-1/2 items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-md">
+          <div className="relative bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {/* subtle top accent */}
+         <div className="h-1 bg-gradient-to-r from-indigo-100 via-indigo-500 to-indigo-100" />
 
-            <form
-              onSubmit={handleRegister}
-              className="bg-white shadow-xl ring-1 ring-black/5 rounded-3xl p-8 sm:p-10"
-            >
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">
-                  Register
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Create your account
-                </p>
+
+            {/* header */}
+            <div className="px-8 pt-8 pb-6">
+              <h2 className="text-2xl font-semibold text-gray-900">Register</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Create your account to continue
+              </p>
+            </div>
+
+            <div className="border-t border-gray-100" />
+
+            <form onSubmit={handleRegister} className="px-8 py-7 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={form.userName}
+                  onChange={(e) => setForm({ ...form, userName: e.target.value })}
+                  required
+                  className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm
+                             outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 transition"
+                />
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    value={form.userName}
-                    onChange={(e) =>
-                      setForm({ ...form, userName: e.target.value })
-                    }
-                    required
-                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
-                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
-                               outline-none transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
-                    required
-                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
-                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
-                               outline-none transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    required
-                    className="w-full h-10 px-3 text-sm rounded-xl border border-gray-300
-                               focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20
-                               outline-none transition"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-11 rounded-xl font-semibold text-white shadow-lg
-                             bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99]
-                             disabled:opacity-60 disabled:cursor-not-allowed
-                             transition"
-                >
-                  {loading ? "Creating account..." : "Register"}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm
+                             outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 transition"
+                />
               </div>
 
-              <div className="mt-6 text-center text-sm text-gray-600">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required
+                  className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm
+                             outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 transition"
+                />
+              </div>
+
+              <button
+  type="submit"
+  disabled={loading}
+  className="mt-2 w-full h-11 rounded-xl font-semibold text-white bg-indigo-600
+             hover:bg-indigo-700 active:scale-[0.99]
+             disabled:opacity-60 disabled:cursor-not-allowed transition"
+>
+  {loading ? "Creating account..." : "Register"}
+</button>
+
+
+              <div className="pt-2 text-center text-sm text-gray-600">
                 Already have an account?{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="font-semibold text-indigo-600 hover:text-indigo-700 transition"
+                  className="font-semibold text-gray-900 hover:text-gray-700 transition"
                 >
                   Log in
                 </button>
               </div>
             </form>
-
-            <p className="mt-6 text-center text-xs text-gray-400">
-              © {new Date().getFullYear()} Pharmacy Management System
-            </p>
           </div>
-        </div>
 
+          <p className="mt-6 text-center text-xs text-gray-400">
+            © {new Date().getFullYear()} Pharmacy Management System
+          </p>
+        </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
