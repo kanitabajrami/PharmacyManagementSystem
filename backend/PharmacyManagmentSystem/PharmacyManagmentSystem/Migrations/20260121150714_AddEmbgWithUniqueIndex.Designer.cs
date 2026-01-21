@@ -12,8 +12,8 @@ using PharmacyManagmentSystem.Data;
 namespace PharmacyManagmentSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260119003953_AddUniqueEmbg")]
-    partial class AddUniqueEmbg
+    [Migration("20260121150714_AddEmbgWithUniqueIndex")]
+    partial class AddEmbgWithUniqueIndex
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

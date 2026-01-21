@@ -136,6 +136,7 @@ namespace PharmacyManagmentSystem
 
             await SeedRolesAndAdminAsync(app);
 
+
             app.UseHttpsRedirection();
 
 
