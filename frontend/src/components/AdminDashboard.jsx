@@ -10,8 +10,8 @@ async function apiFetch(path, options = {}) {
 
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
-      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
     },
     ...options,
   });
@@ -22,11 +22,18 @@ async function apiFetch(path, options = {}) {
     throw new Error(text || `Request failed (${res.status})`);
   }
 
-  // Handle empty responses (DELETE, etc.)
   if (!text) return null;
 
-  return JSON.parse(text);
+  // ✅ If response is JSON → parse it
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return JSON.parse(text);
+  }
+
+  // ✅ Otherwise return raw text
+  return text;
 }
+
 
 function get(obj, ...keys) {
   for (const k of keys) {
@@ -39,6 +46,22 @@ function money(x) {
   const n = Number(x || 0);
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
 }
+
+function resolveMedicineIdByName(name, medicines) {
+  const input = String(name || "").trim().toLowerCase();
+  if (!input) return 0;
+
+  const match = medicines.find(m =>
+    String(get(m, "name", "Name") || "")
+      .trim()
+      .toLowerCase() === input
+  );
+
+  // If found → real ID
+  // If not found → 0 (backend will mark Pending)
+  return match ? Number(get(match, "id", "Id")) : 0;
+}
+
 
 function parseRoles() {
   try {
@@ -223,43 +246,57 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (!Array.isArray(newPrescription.medicines) || newPrescription.medicines.length === 0) {
+    
+
+    const cleanedMedicines = (newPrescription.medicines || [])
+      .filter(m => (String(m.name || "").trim() || Number(m.medicineId) > 0) && Number(m.quantity) > 0)
+      .map(m => ({
+        MedicineId: Number(m.medicineId) || 0,
+        MedicineName: String(m.name || "").trim() || null,   // ✅ send name
+        Quantity: Number(m.quantity),
+      }));
+
+
+    if (cleanedMedicines.length === 0) {
       alert("You must add at least one medicine.");
       return;
     }
 
-    // Clean medicines list
-    const cleanedMedicines = newPrescription.medicines
-      .filter(m => m.medicineId && m.quantity > 0)
-      .map(m => ({
-        medicineId: Number(m.medicineId),
-        quantity: Number(m.quantity),
-      }));
 
-    if (cleanedMedicines.length === 0) {
-      alert("No valid medicines found.");
-      return;
+ 
+
+   // Remove duplicates by (MedicineId + MedicineName) and merge quantities
+const mergedMedicinesMap = new Map();
+
+  for (const m of cleanedMedicines) {
+    const id = Number(m.MedicineId) || 0;
+    const name = String(m.MedicineName || "").trim();
+
+    // key: if it has DB id use id, else use name (so two different external names don't merge)
+    const key = id > 0 ? `id:${id}` : `name:${name.toLowerCase()}`;
+
+    if (!mergedMedicinesMap.has(key)) {
+      mergedMedicinesMap.set(key, { ...m });
+    } else {
+      mergedMedicinesMap.get(key).Quantity += m.Quantity;
     }
+  }
 
-    // Remove duplicates (merge quantities)
-    const mergedMedicines = Object.values(
-      cleanedMedicines.reduce((acc, m) => {
-        if (!acc[m.medicineId]) acc[m.medicineId] = { ...m };
-        else acc[m.medicineId].quantity += m.quantity;
-        return acc;
-      }, {})
-    );
+  const mergedMedicines = Array.from(mergedMedicinesMap.values());
 
-    // ✅ Final DTO (IMPORTANT: backend error shows "EMBG", so send "EMBG")
-    const dto = {
-      EMBG: embg,
-      PatientName: newPrescription.patientName.trim(),
-      DoctorName: newPrescription.doctorName.trim(),
-      Medicines: mergedMedicines.map(m => ({
-        MedicineId: m.medicineId,
-        Quantity: m.quantity,
-      })),
-    };
+  //  Final DTO (match backend DTO property names!)
+  const dto = {
+    EMBG: embg,
+    PatientName: newPrescription.patientName.trim(),
+    DoctorName: newPrescription.doctorName.trim(),
+    Medicines: mergedMedicines.map(m => ({
+      MedicineId: m.MedicineId,
+      MedicineName: m.MedicineName,  // keep it (required when MedicineId = 0)
+      Quantity: m.Quantity,
+    })),
+};
+
+
 
     await apiFetch("/api/Prescription", {
       method: "POST",
@@ -504,33 +541,56 @@ setInvoices(Array.isArray(data) ? data : []);
     }
   }
 
-  async function loadMissingMedicines() {
-    try {
-      const data = await apiFetch("/api/Prescription/missing-medicines");
+async function loadMissingMedicines() {
+  setError("");
 
-      // `data` is an array of strings
+  try {
+    const data = await apiFetch("/api/Prescription/missing-medicines");
+    console.log("missing-medicines raw:", data);
+
+    // ✅ CASE: array of log lines (THIS IS YOUR BACKEND)
+    if (Array.isArray(data) && typeof data[0] === "string") {
       const parsed = data
-        .map(line => {
-          const match = line.match(
-            /Patient:\s*(.*?),\s*Doctor:\s*(.*?),\s*MedicineId:\s*(\d+),\s*Quantity:\s*(\d+)/
-          );
-          if (!match) return null;
-          const [, patientName, doctorName, medicineId, quantity] = match;
-          return {
-            patientName,
-            doctorName,
-            medicineId: Number(medicineId),
-            quantity: Number(quantity)
-          };
-        })
-        .filter(Boolean); // remove invalid lines
+        .map((rawLine) => {
+          // remove timestamp: [2026-01-28 15:50:14]
+          const line = rawLine.replace(/^\[[^\]]+\]\s*/, "");
 
+          const embg = line.match(/\bEMBG\s*=\s*(\d{13})/i)?.[1] ?? null;
+          const patientName =
+            line.match(/\bPatient\s*=\s*([^|]+)/i)?.[1]?.trim() ?? "";
+          const doctorName =
+            line.match(/\bDoctor\s*=\s*([^|]+)/i)?.[1]?.trim() ?? "";
+
+          let medicineName =
+            line.match(/\bMedicine\s*=\s*"([^"]+)"/i)?.[1] ??
+            line.match(/\bMedicine\s*=\s*([^|]+)/i)?.[1] ??
+            "";
+
+          medicineName = medicineName.trim();
+
+          const quantity =
+            Number(line.match(/\bQty\s*=\s*(\d+)/i)?.[1]) || 0;
+
+          return { embg, patientName, doctorName, medicineName, quantity };
+        })
+        .filter((x) => x.medicineName && x.quantity > 0);
+
+      console.log("missing parsed:", parsed);
       setMissingMedicines(parsed);
-    } catch (err) {
-      console.error("Failed to load missing medicines:", err.message);
-      setMissingMedicines([]);
+      return;
     }
+
+    // Fallback (if file empty or unexpected)
+    setMissingMedicines([]);
+  } catch (err) {
+    setMissingMedicines([]);
+    setError(err.message || "Failed to load missing medicines.");
   }
+}
+
+
+
+
 
   async function loadSuppliers() {
     setSupLoading(true);
@@ -624,6 +684,21 @@ setInvoices(Array.isArray(data) ? data : []);
     if (tab === "users") loadUsers();
   }, [tab]);
 
+  const missingByKey = useMemo(() => {
+  const map = new Map();
+
+  (missingMedicines || []).forEach((m) => {
+    const key =
+      m.embg && String(m.embg).trim()
+        ? `embg:${String(m.embg).trim()}`
+        : `pd:${m.patientName.toLowerCase()}|${m.doctorName.toLowerCase()}`;
+
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(m);
+  });
+
+  return map;
+}, [missingMedicines]);
   // ---------- MEDICINES VIEW ----------
   const medicinesView = useMemo(() => {
     const list = [...medicines];
@@ -859,7 +934,8 @@ setInvoices(Array.isArray(data) ? data : []);
                       <MedicineRow
                         key={get(m, "id", "Id")}
                         med={m}
-                        onDelete={() => deleteMedicine(m.id)} 
+                        onDelete={() => deleteMedicine(get(m, "id", "Id"))}
+
                       />
                     ))}
                   </div>
@@ -998,7 +1074,7 @@ setInvoices(Array.isArray(data) ? data : []);
                 {/* Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => loadInvoicesByUser(invoiceUserId)}
+                    onClick={loadInvoicesByUser}
                     className="flex-1 h-10 rounded-xl text-sm font-medium
                               bg-indigo-600 text-white hover:bg-indigo-700 transition"
                   >
@@ -1078,7 +1154,8 @@ setInvoices(Array.isArray(data) ? data : []);
                         className="rounded-2xl border p-4 flex items-center justify-between gap-3
                                   bg-white hover:bg-gray-50 transition"
                       >
-                        <PrescriptionRow rx={rx} />
+                        <PrescriptionRow rx={rx} missingByKey={missingByKey} />
+
 
                         <button
                           onClick={() => deletePrescription(rx.id ?? rx.Id)}
@@ -1140,79 +1217,124 @@ setInvoices(Array.isArray(data) ? data : []);
                         focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
             />
 
-
                 {/* Medicines */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Medicines *</p>
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Medicines *</p>
 
-                  {newPrescription.medicines.length === 0 && (
-                    <p className="text-sm text-red-500">Add at least one medicine</p>
-                  )}
+          {/* Datalist for autocomplete dropdown */}
+          <datalist id="medicine-names">
+            {(medicines || []).map((m) => {
+              const id = get(m, "id", "Id");
+              const name = get(m, "name", "Name");
+              return <option key={id} value={name} />;
+            })}
+          </datalist>
 
-                  {newPrescription.medicines.map((med, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <input
-                        type="number"
-                        min={1}
-                        value={med.medicineId || ""}
-                        placeholder="Medicine ID"
-                        onChange={(e) => {
-                          const updated = [...newPrescription.medicines];
-                          updated[index].medicineId = Number(e.target.value);
-                          setNewPrescription({ ...newPrescription, medicines: updated });
-                        }}
-                        className="flex-1 h-10 px-3 rounded-xl border text-sm outline-none
-                                  focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                      />
-                      <input
-                        type="number"
-                        min={1}
-                        value={med.quantity}
-                        placeholder="Qty"
-                        onChange={(e) => {
-                          const updated = [...newPrescription.medicines];
-                          updated[index].quantity = Number(e.target.value);
-                          setNewPrescription({ ...newPrescription, medicines: updated });
-                        }}
-                        className="w-20 h-10 px-3 rounded-xl border text-sm outline-none
-                                  focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
-                      />
-                      <button
-                        onClick={() => {
-                          const updated = [...newPrescription.medicines];
-                          updated.splice(index, 1);
-                          setNewPrescription({ ...newPrescription, medicines: updated });
-                        }}
-                        className="px-3 py-1 rounded-xl text-sm font-medium text-white
-                                  bg-red-600 hover:bg-red-700 transition"
-                      >
-                        Remove
-                      </button>
+          {(newPrescription.medicines || []).length === 0 && (
+            <p className="text-sm text-red-500">Add at least one medicine</p>
+          )}
+
+          {(newPrescription.medicines || []).map((med, index) => {
+            const hasName = String(med.name || "").trim().length > 0;
+            const isMatched = Number(med.medicineId) > 0;
+
+            return (
+              <div key={index} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <input
+                    list="medicine-names"
+                    value={med.name || ""}
+                    placeholder="Medicine name (select or type)"
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const resolvedId = resolveMedicineIdByName(name, medicines);
+
+                      const updated = [...(newPrescription.medicines || [])];
+                      updated[index] = {
+                        ...updated[index],
+                        name,
+                        medicineId: resolvedId,
+                      };
+
+                      setNewPrescription({ ...newPrescription, medicines: updated });
+                    }}
+                    className="w-full h-10 px-3 rounded-xl border text-sm outline-none
+                              focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                  />
+
+                  {hasName && (
+                    <div className="mt-1 text-xs">
+                      {isMatched ? (
+                        <span className="text-emerald-700">
+                          Matched in DB ✓ (ID: {med.medicineId})
+                        </span>
+                      ) : (
+                        <span className="text-amber-700">
+                          Not found → will be Pending
+                        </span>
+                      )}
                     </div>
-                  ))}
-
-                  <button
-                    onClick={() =>
-                      setNewPrescription({
-                        ...newPrescription,
-                        medicines: [...newPrescription.medicines, { medicineId: "", quantity: 1 }],
-                      })
-                    }
-                    className="w-full h-10 rounded-xl font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition"
-                  >
-                    + Add Medicine
-                  </button>
+                  )}
                 </div>
+
+                <input
+                  type="number"
+                  min={1}
+                  value={med.quantity ?? 1}
+                  placeholder="Qty"
+                  onChange={(e) => {
+                    const updated = [...(newPrescription.medicines || [])];
+                    updated[index] = {
+                      ...updated[index],
+                      quantity: Number(e.target.value),
+                    };
+                    setNewPrescription({ ...newPrescription, medicines: updated });
+                  }}
+                  className="w-20 h-10 px-3 rounded-xl border text-sm outline-none
+                            focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+                />
+
+                <button
+                  onClick={() => {
+                    const updated = [...(newPrescription.medicines || [])];
+                    updated.splice(index, 1);
+                    setNewPrescription({ ...newPrescription, medicines: updated });
+                  }}
+                  className="px-3 py-1 rounded-xl text-sm font-medium text-white
+                            bg-red-600 hover:bg-red-700 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+
+          <button
+            onClick={() =>
+              setNewPrescription({
+                ...newPrescription,
+                medicines: [
+                  ...(newPrescription.medicines || []),
+                  { name: "", medicineId: 0, quantity: 1 },
+                ],
+              })
+            }
+            className="w-full h-10 rounded-xl font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition"
+          >
+            + Add Medicine
+          </button>
+        </div>
 
                 {/* Submit */}
                 <button
                   onClick={createPrescription}
-                  disabled={
+                 disabled={
                     prescriptionCreating ||
                     !newPrescription.patientName ||
                     !newPrescription.doctorName ||
-                    newPrescription.medicines.length === 0
+                    ((newPrescription.medicines?.length || 0) === 0 && (newPrescription.externalMedicines?.length || 0) === 0)
                   }
+
                   className="mt-3 w-full h-11 rounded-xl font-semibold text-white shadow
                             bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99]
                             disabled:opacity-60 disabled:cursor-not-allowed transition"
@@ -1606,29 +1728,30 @@ function InvoiceRow({ inv }) {
   );
 }
 
-function PrescriptionRow({ rx }) {
+function PrescriptionRow({ rx, missingByKey }) {
   const id = get(rx, "id", "Id");
 
-  const patientName =
-    get(rx, "patientName", "PatientName") || "Unknown patient";
-  const patientId = get(rx, "patientId", "PatientId");
+  const patientName = get(rx, "patientName", "PatientName") || "Unknown patient";
+  const doctorName = get(rx, "doctorName", "DoctorName") || "—";
 
-  const doctorName =
-    get(rx, "doctorName", "DoctorName") || "—";
+  const embg = get(rx, "embg", "EMBG");
+  const key =
+    embg && String(embg).trim()
+      ? `embg:${String(embg).trim()}`
+      : `pd:${String(patientName).toLowerCase()}|${String(doctorName).toLowerCase()}`;
+
+  const missing = missingByKey?.get(key) || [];
 
   const status = get(rx, "status", "Status");
-  const created =
-    get(rx, "dateCreated", "DateCreated") ||
-    get(rx, "createdAt", "CreatedAt");
+  const created = get(rx, "dateCreated", "DateCreated") || get(rx, "dateIssued", "DateIssued");
 
   const meds =
-    get(rx, "prescriptionMedicines") ??
-    get(rx, "PrescriptionMedicines") ??
-    get(rx, "medicines") ??
-    get(rx, "Medicines") ??
+    get(rx, "medicines", "Medicines") ||
+    get(rx, "prescriptionMedicines", "PrescriptionMedicines") ||
     [];
 
-  const medsCount = Array.isArray(meds) ? meds.length : 0;
+  const medsList = Array.isArray(meds) ? meds : [];
+  const medsCount = medsList.length;
 
   const statusLabel =
     String(status).toLowerCase() === "ready" ? "Ready" : "Pending";
@@ -1640,66 +1763,84 @@ function PrescriptionRow({ rx }) {
 
   return (
     <div className="min-w-0">
-      {/* Top row */}
       <div className="flex items-center gap-2">
-        <div className="font-semibold text-gray-900 truncate">
-          Prescription #{id}
-        </div>
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full border ${statusBadge}`}
-        >
+        <div className="font-semibold text-gray-900 truncate">Prescription #{id}</div>
+        <span className={`text-xs px-2 py-0.5 rounded-full border ${statusBadge}`}>
           {statusLabel}
         </span>
       </div>
 
-      {/* Details */}
       <div className="text-xs text-gray-500 mt-1">
-        Patient: {patientName}
-        {patientId ? ` (ID: ${patientId})` : ""} • Doctor: {doctorName}
+        Patient: {patientName} • Doctor: {doctorName}
       </div>
 
       <div className="text-xs text-gray-500 mt-1">
         💊 Medicines: {medsCount}
-        {created && (
-          <> • 📅 {new Date(created).toLocaleString()}</>
-        )}
+        {created && <> • 📅 {new Date(created).toLocaleString()}</>}
       </div>
+
+      {/* ✅ Show medicines list */}
+      
+      {/* Medicines list (only if there are medicines in DB) */}
+{medsCount > 0 && (
+  <ul className="mt-2 text-xs text-gray-700 space-y-1">
+    {medsList.slice(0, 6).map((m, idx) => {
+      const mid = get(m, "medicineId", "MedicineId");
+      const mname = get(m, "medicineName", "MedicineName") || "(Missing medicine)";
+      const qty = get(m, "quantity", "Quantity") || 0;
+
+      return (
+        <li key={idx} className="truncate">
+          • {mname} (ID: {mid}) × {qty}
+        </li>
+      );
+    })}
+
+    {medsCount > 6 && (
+      <li className="text-gray-500">…and {medsCount - 6} more</li>
+    )}
+  </ul>
+)}
+
+{/* ✅ Missing medicines from file (show EVEN if medsCount = 0) */}
+{missing.length > 0 && (
+  <div className="mt-3 border-t pt-2">
+    <div className="text-xs font-semibold text-amber-700">
+      Missing medicines:
+    </div>
+
+    <ul className="mt-1 text-xs text-amber-800 space-y-1">
+      {missing.map((mm, i) => (
+        <li key={i} className="truncate">
+          • {mm.medicineName} × {mm.quantity}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
+
+       
     </div>
   );
 }
 
 function MissingMedicineRow({ m }) {
-  const { patientName, doctorName, medicineId, quantity } = m;
-
-  const quantityBadge =
-    quantity <= 1
-      ? "bg-red-50 text-red-700 border-red-200"
-      : "bg-amber-50 text-amber-700 border-amber-200";
+  const { patientName, doctorName, medicineName, quantity } = m;
 
   return (
-    <div className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-white hover:bg-gray-50 transition">
-      
-      {/* Info */}
-      <div className="flex flex-col sm:flex-row sm:gap-6 w-full min-w-0">
-        <div className="text-sm text-gray-900 font-semibold truncate">
-          Patient: {patientName}
-        </div>
-        <div className="text-sm text-gray-700 truncate">
-          Doctor: {doctorName}
-        </div>
-        <div className="text-sm text-gray-700 truncate">
-          Medicine ID: {medicineId}
-        </div>
-        <div
-          className={`text-xs px-2 py-0.5 rounded-full border ${quantityBadge} font-medium`}
-        >
-          Qty: {quantity}
-        </div>
+    <div className="rounded-2xl border p-4 bg-white">
+      <div className="text-sm font-semibold">Patient: {patientName}</div>
+      <div className="text-sm">Doctor: {doctorName}</div>
+      <div className="text-sm">
+        Medicine: {medicineName || "(no name)"} 
       </div>
-
+      <div className="text-sm">Qty: {quantity}</div>
     </div>
   );
 }
+
 
 function Empty({ title, text }) {
   return (

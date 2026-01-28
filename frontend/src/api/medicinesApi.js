@@ -1,6 +1,8 @@
 // src/api/medicinesApi.js
 
-const API_BASE = "https://localhost:7201";
+// const API_BASE = "https://localhost:7201";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("token");
