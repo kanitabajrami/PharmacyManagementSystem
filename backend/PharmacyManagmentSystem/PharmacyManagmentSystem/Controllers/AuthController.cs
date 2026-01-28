@@ -48,6 +48,7 @@ namespace PharmacyManagmentSystem.Controllers
             var ok = await _userManager.CheckPasswordAsync(user, dto.Password);
             if (!ok) return Unauthorized("Invalid credentials.");
 
+
             var token =await CreateTokenAsync(user);
             return Ok(new { token });
         }

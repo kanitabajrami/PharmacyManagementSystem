@@ -1,163 +1,163 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using PharmacyManagmentSystem.DTOs;
-using PharmacyManagmentSystem.Helpers;
-using PharmacyManagmentSystem.Models;
-using PharmacyManagmentSystem.Repositories;
-using System.Net.WebSockets;
+﻿    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Mvc;
+    using PharmacyManagmentSystem.DTOs;
+    using PharmacyManagmentSystem.Helpers;
+    using PharmacyManagmentSystem.Models;
+    using PharmacyManagmentSystem.Repositories;
+    using System.Net.WebSockets;
 
-namespace PharmacyManagmentSystem.Controllers
-{
-    [Route("api/[controller]")]
-    [ApiController]
-    public class PrescriptionController : ControllerBase
+    namespace PharmacyManagmentSystem.Controllers
     {
-        private readonly IPrescriptionRepository _repository;
-        private readonly PrescriptionHelper _helper;
-
-        public PrescriptionController(IPrescriptionRepository repository, PrescriptionHelper helper)
+        [Route("api/[controller]")]
+        [ApiController]
+        public class PrescriptionController : ControllerBase
         {
-            _repository = repository;
-            _helper = helper;
-        }
+            private readonly IPrescriptionRepository _repository;
+            private readonly PrescriptionHelper _helper;
 
-        // GET: api/Prescription
-        [HttpGet]
-        [Authorize]
-        public async Task<IActionResult> GetAll()
-        {
-            var prescriptions = await _repository.GetAllAsync();
-            return Ok(prescriptions.Select(PrescriptionMapper.toDto));
-        }
-
-        // GET: api/Prescription/{id}
-        [HttpGet("{id}")]
-        [Authorize]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var prescription = await _repository.GetByIdAsync(id);
-            if (prescription == null) 
-                return NotFound("Prescription not found");
-            return Ok(PrescriptionMapper.toDto(prescription));
-        }
-
-
-        [HttpGet("search")]
-        [Authorize(Roles = "User")]
-        public async Task<IActionResult> Search(
-            [FromQuery] string? embg,
-            [FromQuery] string? patientName,
-            [FromQuery] string? doctorName)
-        {
-            embg = embg?.Trim();
-            patientName = patientName?.Trim();
-            doctorName = doctorName?.Trim();
-
-            // optional: validate EMBG if provided (13 digits)
-            if (!string.IsNullOrWhiteSpace(embg))
+            public PrescriptionController(IPrescriptionRepository repository, PrescriptionHelper helper)
             {
-                if (embg.Length != 13 || !embg.All(char.IsDigit))
-                    return BadRequest("EMBG must be exactly 13 digits.");
+                _repository = repository;
+                _helper = helper;
             }
 
-            if (!string.IsNullOrWhiteSpace(embg) && !embg.All(char.IsDigit))
-                return BadRequest(new { message = "EMBG must contain only numbers." });
-
-
-            var results = await _repository.SearchAsync(embg, patientName, doctorName);
-            return Ok(results.Select(PrescriptionMapper.toDto));
-        }
-
-        // POST: api/Prescription
-        [HttpPost]
-        [Authorize(Roles ="Admin")]
-        public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
-        {
-            if (!ModelState.IsValid) 
-                return BadRequest(ModelState);
-
-            try
+            // GET: api/Prescription
+            [HttpGet]
+            [Authorize]
+            public async Task<IActionResult> GetAll()
             {
-                if (await _repository.EmbgExistsAsync(dto.EMBG))
-                    return BadRequest(new { message = "EMBG already exists." });
-
-                var prescription = PrescriptionMapper.ToEntity(dto);        // Map DTO to entity
-
-                await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
-
-                await _repository.AddAsync(prescription);       // Save changes
-                return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, PrescriptionMapper.toDto(prescription));
+                var prescriptions = await _repository.GetAllAsync();
+                return Ok(prescriptions.Select(PrescriptionMapper.toDto));
             }
-            catch (Exception ex)
+
+            // GET: api/Prescription/{id}
+            [HttpGet("{id}")]
+            [Authorize]
+            public async Task<IActionResult> GetById(int id)
             {
-                return StatusCode(500, $"Failed to import prescription: {ex.Message}");
+                var prescription = await _repository.GetByIdAsync(id);
+                if (prescription == null) 
+                    return NotFound("Prescription not found");
+                return Ok(PrescriptionMapper.toDto(prescription));
             }
-        }
 
-        // PUT: api/Prescription/{id}
-        //[HttpPut("{id}")]
+
+            [HttpGet("search")]
+            [Authorize(Roles = "User")]
+            public async Task<IActionResult> Search(
+                [FromQuery] string? embg,
+                [FromQuery] string? patientName,
+                [FromQuery] string? doctorName)
+            {
+                embg = embg?.Trim();
+                patientName = patientName?.Trim();
+                doctorName = doctorName?.Trim();
+
+                // optional: validate EMBG if provided (13 digits)
+                if (!string.IsNullOrWhiteSpace(embg))
+                {
+                    if (embg.Length != 13 || !embg.All(char.IsDigit))
+                        return BadRequest("EMBG must be exactly 13 digits.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(embg) && !embg.All(char.IsDigit))
+                    return BadRequest(new { message = "EMBG must contain only numbers." });
+
+
+                var results = await _repository.SearchAsync(embg, patientName, doctorName);
+                return Ok(results.Select(PrescriptionMapper.toDto));
+            }
+
+            // POST: api/Prescription
+            [HttpPost]
+            [Authorize(Roles ="Admin")]
+            public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
+            {
+                if (!ModelState.IsValid) 
+                    return BadRequest(ModelState);
+
+                try
+                {
+                    if (await _repository.EmbgExistsAsync(dto.EMBG))
+                        return BadRequest(new { message = "EMBG already exists." });
+
+                    var prescription = PrescriptionMapper.ToEntity(dto);        // Map DTO to entity
+
+                    await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
+
+                    await _repository.AddAsync(prescription);       // Save changes
+                    return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, PrescriptionMapper.toDto(prescription));
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Failed to import prescription: {ex.Message}");
+                }
+            }
+
+            // PUT: api/Prescription/{id}
+            //[HttpPut("{id}")]
         
-        //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
-        //{
-        //    if(!ModelState.IsValid)
-        //        return BadRequest(ModelState);
-        //    try
-        //    {
-        //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
-        //        if (existing == null)
-        //            return NotFound("Prescription not found");
+            //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
+            //{
+            //    if(!ModelState.IsValid)
+            //        return BadRequest(ModelState);
+            //    try
+            //    {
+            //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
+            //        if (existing == null)
+            //            return NotFound("Prescription not found");
 
-        //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
+            //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
 
-        //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
+            //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
 
-        //        await _repository.UpdateAsync(existing);        //Save changes
-        //        return Ok(PrescriptionMapper.toDto(existing));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
-        //    }
-        //}
+            //        await _repository.UpdateAsync(existing);        //Save changes
+            //        return Ok(PrescriptionMapper.toDto(existing));
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
+            //    }
+            //}
 
-        // DELETE: api/Prescription/{id}
-        [HttpDelete("{id}")]
-        [Authorize(Roles ="Admin")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            await _repository.DeleteAsync(id);
-            return NoContent();
-        }
+            // DELETE: api/Prescription/{id}
+            [HttpDelete("{id}")]
+            [Authorize(Roles ="Admin")]
+            public async Task<IActionResult> Delete(int id)
+            {
+                await _repository.DeleteAsync(id);
+                return NoContent();
+            }
  
 
-        // GET: api/Prescription/missing-medicines
-        [HttpGet("missing-medicines")]
-        [Authorize(Roles = "Admin")]
-        public IActionResult GetMissingMedicinesLog()
-        {
-            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs", "missing_medicines.txt");
+            // GET: api/Prescription/missing-medicines
+            [HttpGet("missing-medicines")]
+            [Authorize(Roles = "Admin")]
+            public IActionResult GetMissingMedicinesLog()
+            {
+                var logPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs", "missing_medicines.txt");
 
-            if (!System.IO.File.Exists(logPath))
-                return Ok(new List<string>());
+                if (!System.IO.File.Exists(logPath))
+                    return Ok(new List<string>());
 
-            var lines = System.IO.File.ReadAllLines(logPath);
-            return Ok(lines);
+                var lines = System.IO.File.ReadAllLines(logPath);
+                return Ok(lines);
+            }
+
+            //// GET: api/Prescription/expired
+            //[HttpGet("expired")]
+            //public async Task<IActionResult> GetExpired()
+            //{
+            //    var expired = await _repository.GetExpiredPrescriptions();
+            //    return Ok(expired);
+            //}
+
+            //// GET: api/Prescription/{id}/isExpired
+            //[HttpGet("{id}/isExpired")]
+            //public async Task<IActionResult> IsExpired(int id)
+            //{
+            //    var result = await _repository.IsExpiredAsync(id);
+            //    return Ok(result);
+            //}
         }
-
-        //// GET: api/Prescription/expired
-        //[HttpGet("expired")]
-        //public async Task<IActionResult> GetExpired()
-        //{
-        //    var expired = await _repository.GetExpiredPrescriptions();
-        //    return Ok(expired);
-        //}
-
-        //// GET: api/Prescription/{id}/isExpired
-        //[HttpGet("{id}/isExpired")]
-        //public async Task<IActionResult> IsExpired(int id)
-        //{
-        //    var result = await _repository.IsExpiredAsync(id);
-        //    return Ok(result);
-        //}
     }
-}

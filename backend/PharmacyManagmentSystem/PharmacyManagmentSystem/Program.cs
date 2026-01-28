@@ -8,6 +8,7 @@ using PharmacyManagmentSystem.Data;
 using PharmacyManagmentSystem.Helpers;
 using PharmacyManagmentSystem.Models;
 using PharmacyManagmentSystem.Repositories;
+using PharmacyManagmentSystem.Services;
 using System.Text;
 
 namespace PharmacyManagmentSystem
@@ -94,6 +95,8 @@ namespace PharmacyManagmentSystem
           
 
             builder.Services.AddScoped<PrescriptionHelper>();
+          
+
 
             builder.Services.AddCors(options =>
             {

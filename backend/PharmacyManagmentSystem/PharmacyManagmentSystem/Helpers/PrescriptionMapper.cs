@@ -54,11 +54,13 @@ namespace PharmacyManagmentSystem.Helpers
                 DateIssued = entity.DateIssued,
                 Status = entity.Status.ToString(),
                 Medicines = entity.PrescriptionMedicines
-                                .Select(pm => new PrescriptionMedicineCreateDto
-                                {
-                                    MedicineId = pm.MedicineId,
-                                    Quantity = pm.Quantity
-                                }).ToList()
+                    .Select(pm => new PrescriptionMedicineResponseDto
+                    {
+                        MedicineId = pm.MedicineId,
+                        MedicineName = pm.Medicine != null ? pm.Medicine.Name : null,
+                        Quantity = pm.Quantity
+                    })
+                    .ToList()
             };
         }
     }

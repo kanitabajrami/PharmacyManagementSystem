@@ -20,10 +20,13 @@ namespace PharmacyManagmentSystem.DTOs
 
     public class PrescriptionMedicineCreateDto
     {
-        [Required]
+       
         public int MedicineId { get; set; }
+
         [Required]
         public int Quantity { get; set; }
+
+        public string? MedicineName { get; set; }
     }
 
     public class PrescriptionResponseDto
@@ -34,6 +37,18 @@ namespace PharmacyManagmentSystem.DTOs
         public string DoctorName { get; set; }
         public DateTime DateIssued { get; set; }
         public string Status { get; set; }
-        public List<PrescriptionMedicineCreateDto> Medicines { get; set; }
+        public List<PrescriptionMedicineResponseDto> Medicines { get; set; }
     }
+}
+public class PrescriptionMedicineResponseDto
+{
+    public int MedicineId { get; set; }
+    public string? MedicineName { get; set; }
+    public int Quantity { get; set; }
+}
+
+public class MissingMedicineDto
+{
+    public string MedicineName { get; set; }
+    public int Quantity { get; set; }
 }
