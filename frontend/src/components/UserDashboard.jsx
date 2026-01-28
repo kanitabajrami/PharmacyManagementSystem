@@ -22,23 +22,31 @@ async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
   });
 
-  if (res.status === 204) return null;
-
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
 
+  // if not OK, throw the best message we can
   if (!res.ok) {
-    throw new Error(data?.message || `Request failed (${res.status})`);
+    throw new Error(text || `Request failed (${res.status})`);
   }
 
-  return data;
+  if (!text) return null;
+
+  // parse JSON only if content-type says JSON
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return JSON.parse(text);
+  }
+
+  // otherwise return plain text
+  return text;
 }
+
 
 function get(obj, ...keys) {
   for (const k of keys) {
@@ -321,19 +329,26 @@ export default function UserDashboard() {
   // ---------- CART ----------
   function addToCart(m) {
     const id = get(m, "id", "Id");
-    const name = get(m, "name", "Name") || "Medicine";
-    const price = Number(get(m, "price", "Price") || 0);
-    const stock = Number(get(m, "quantity", "Quantity") || 0);
+const name = get(m, "name", "Name") || "Medicine";
+const price = Number(get(m, "price", "Price") || 0);
+const stock = Number(get(m, "quantity", "Quantity") || 0);
 
-    if (!id || stock <= 0) return;
+if (!id || stock <= 0) return;
 
-    setCart((prev) => {
-      const existing = prev.find((x) => x.medicineId === id);
-      if (!existing) return [...prev, { medicineId: id, name, price, qty: 1 }];
+// ✅ IMPORTANT: if a prescription is selected, don't allow adding other meds
+if (prescriptionId && String(prescriptionId).trim() !== "") {
+  alert("You selected a prescription. You can only invoice medicines from that prescription. Choose “— No prescription —” to add other medicines.");
+  return;
+}
 
-      const nextQty = Math.min(existing.qty + 1, stock);
-      return prev.map((x) => (x.medicineId === id ? { ...x, qty: nextQty } : x));
-    });
+setCart((prev) => {
+  const existing = prev.find((x) => x.medicineId === id);
+  if (!existing) return [...prev, { medicineId: id, name, price, qty: 1 }];
+
+  const nextQty = Math.min(existing.qty + 1, stock);
+  return prev.map((x) => (x.medicineId === id ? { ...x, qty: nextQty } : x));
+});
+
   }
 
   function setQty(medicineId, qty) {
@@ -672,7 +687,12 @@ async function addPrescriptionToInvoice(rxId) {
                 ) : (
                   <div className="space-y-3">
                     {medicinesView.slice(0, 40).map((m) => (
-                      <MedicineRow key={get(m, "id", "Id")} med={m} onAdd={() => addToCart(m)} />
+                    <MedicineRow
+                    key={get(m, "id", "Id")}
+                    med={m}
+                    onAdd={() => addToCart(m)}
+                    prescriptionId={prescriptionId}
+                  />
                     ))}
                   </div>
                 )}
@@ -842,18 +862,20 @@ async function addPrescriptionToInvoice(rxId) {
         {tab === "prescriptions" && (
           <div className="bg-white rounded-3xl border shadow-sm">
             <div className="p-5 border-b">
-              <div className="flex items-start sm:items-center justify-between gap-3">
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={loadPrescriptionsAll}
-                    className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
-                  >
-                    All
-                  </button>
-                
-                </div>
-              </div>
+              <div className="p-5 border-b flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Prescriptions</h2>
+              <p className="text-sm text-gray-500">Search and add to invoice.</p>
+            </div>
+
+            <button
+              onClick={loadPrescriptionsAll}
+              className="px-3 h-9 rounded-xl text-sm font-medium border bg-gray-900 text-white border-gray-900 hover:bg-gray-800 transition"
+            >
+              All
+            </button>
+          </div>
+
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <input
@@ -984,7 +1006,7 @@ async function addPrescriptionToInvoice(rxId) {
 
 /* ===================== UI PIECES ===================== */
 
-function MedicineRow({ med, onAdd }) {
+function MedicineRow({ med, onAdd,prescriptionId }) {
   const id = get(med, "id", "Id");
   const name = get(med, "name", "Name") || "Medicine";
   const category = get(med, "category", "Category");
@@ -1024,7 +1046,7 @@ function MedicineRow({ med, onAdd }) {
 
         <button
           onClick={onAdd}
-          disabled={!id || qty <= 0}
+          disabled={!id || qty <= 0 || Boolean(prescriptionId)}
           className="px-3 h-10 rounded-xl text-sm font-semibold text-white
                      bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
         >
@@ -1101,75 +1123,82 @@ function InvoiceRow({ inv }) {
 
 function PrescriptionRow({ rx, onAddToInvoice }) {
   const id = get(rx, "id", "Id");
-  const patient = get(rx, "patientName", "PatientName") || get(rx, "patientId", "PatientId");
-  const doctor = get(rx, "doctorName", "DoctorName");
-  const status = get(rx, "status", "Status");
-  const issued = get(rx, "dateIssued", "DateIssued");
 
-  const meds = get(rx, "medicines", "Medicines") || [];
+  const patientName = get(rx, "patientName", "PatientName") || "Unknown patient";
+  const doctorName = get(rx, "doctorName", "DoctorName") || "—";
+  const status = get(rx, "status", "Status");
+  const created = get(rx, "dateCreated", "DateCreated") || get(rx, "dateIssued", "DateIssued");
+
+  const meds =
+    get(rx, "medicines", "Medicines") ||
+    get(rx, "prescriptionMedicines", "PrescriptionMedicines") ||
+    [];
+
+  const medsList = Array.isArray(meds) ? meds : [];
+  const medsCount = medsList.length;
+
+  const statusLabel =
+    String(status || "").toLowerCase() === "ready" ? "Ready" : "Pending";
+
+  const statusBadge =
+    String(status || "").toLowerCase() === "ready"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
 
   return (
-    <div className="rounded-2xl border p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-semibold text-gray-900 truncate">
-            Prescription #{id}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {patient ? `Patient: ${patient} • ` : ""}
-            {doctor ? `Doctor: ${doctor}` : ""}
-          </div>
-          {issued && (
-            <div className="text-xs text-gray-400 mt-1">
-              Issued: {new Date(issued).toLocaleDateString()}
-            </div>
-          )}
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3 bg-white hover:bg-gray-50 transition">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <div className="font-semibold text-gray-900 truncate">Prescription #{id}</div>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${statusBadge}`}>
+            {statusLabel}
+          </span>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          {status !== undefined && (
-            <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700">
-              {String(status)}
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => onAddToInvoice(id)}
-            className="px-3 h-9 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition"
-          >
-            Add to invoice
-          </button>
+        <div className="text-xs text-gray-500 mt-1">
+          Patient: {patientName} • Doctor: {doctorName}
         </div>
-      </div>
 
-      {/* Medicines + quantities */}
-      <div className="mt-3">
-        <div className="text-xs font-medium text-gray-700 mb-2">Medicines</div>
+        <div className="text-xs text-gray-500 mt-1">
+          💊 Medicines: {medsCount}
+          {created && <> • 📅 {new Date(created).toLocaleString()}</>}
+        </div>
 
-        {!Array.isArray(meds) || meds.length === 0 ? (
-          <div className="text-xs text-gray-400">No medicines</div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {meds.map((m, idx) => {
-              const medId = m.medicineId ?? m.MedicineId;
-              const qty = m.quantity ?? m.Quantity;
+        {/* ✅ Show medicines list (names if backend provides them) */}
+        {medsCount > 0 && (
+          <ul className="mt-2 text-xs text-gray-700 space-y-1">
+            {medsList.slice(0, 6).map((m, idx) => {
+              const mid = get(m, "medicineId", "MedicineId");
+              const mname =
+                get(m, "medicineName", "MedicineName") ||
+                (mid ? `Medicine #${mid}` : "(Missing medicine)");
+              const qty = get(m, "quantity", "Quantity") || 0;
 
               return (
-                <span
-                  key={`${id}-${medId}-${idx}`}
-                  className="text-xs px-2 py-1 rounded-xl border bg-white"
-                >
-                  Med #{medId} • Qty: {qty}
-                </span>
+                <li key={idx} className="truncate">
+                  • {mname} (ID: {mid}) × {qty}
+                </li>
               );
             })}
-          </div>
+
+            {medsCount > 6 && (
+              <li className="text-gray-500">…and {medsCount - 6} more</li>
+            )}
+          </ul>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => onAddToInvoice(id)}
+        className="px-3 h-9 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition"
+      >
+        Add to invoice
+      </button>
     </div>
   );
 }
+
 
 
 
