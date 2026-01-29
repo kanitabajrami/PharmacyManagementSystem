@@ -110,6 +110,7 @@ VITE_API_URL=https://localhost:7201
 ```
 
 
+
 ## API Reference
 
 All endpoints require a **JWT token** in the `Authorization` header except for **User Registration.**
@@ -119,7 +120,7 @@ All endpoints require a **JWT token** in the `Authorization` header except for *
 #### Register (Public)
 
 ```http
-    POST /api/users/register
+    POST /api/auth/register
 ```
 
 | Parameter | Type     | Description                |
@@ -162,9 +163,64 @@ All endpoints require a **JWT token** in the `Authorization` header except for *
 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
-| `id` | `string` | **Required**. Id of the user |
-| `role` | `string`| **Required**. Role to assign (Admin/User)|
-| `Authorization` | `string`| **Required**. JWT token with admin role|
+| `Authorization` | `string`| **Required**. JWT token |
+
+#### Get medicine by ID
+
+
+```http
+    GET /api/Medicines/{id}
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `id` | `int` | **Required**. Medicine ID |
+| `Authorization` | `string` | **Required**. JWT token |
+
+#### Create medicine (Admin only)
+
+```http
+    POST /api/medicines
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `name` | `string` | Medicine name |
+| `price` | `int` | Medicine price |
+| `quantity` | `int` | Stock quantity |
+| `supplierid` | `int` | Supplier ID |
+| `Authorization` | `string` | **Required**. JWT token |
+
+#### Additional medicine endpoints
+```http
+    GET /api/medicines/search?name=&category=
+    GET /api/medicines/low-stock?threshold=10
+    GET /api/medicines/expiring-soon?days=30
+```
+
+
+### Prescriptions   
+
+#### Get all prescriptions
+
+```http
+    GET /api/prescription
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `string`| **Required**. JWT token |
+
+#### Get prescription by ID
+
+```http
+    GET /api/Prescription/{id}
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `id` | `int` | **Required**. Prescription ID |
+| `Authorization` | `string` | **Required**. JWT token |
 
 
 ## Screenshots
@@ -174,6 +230,7 @@ All endpoints require a **JWT token** in the `Authorization` header except for *
 ![Admin dashboard](/assets/screenshots/admin.png)
 
 ![User dashboar](/assets/screenshots/user.png)
+
 
 
 
