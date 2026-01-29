@@ -2,7 +2,9 @@
 
 // const API_BASE = "https://localhost:7201";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  "https://pharmacymanagementsystem-fvbjgah5b9axg3hz.francecentral-01.azurewebsites.net";
 
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("token");

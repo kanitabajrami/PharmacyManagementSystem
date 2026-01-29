@@ -824,9 +824,6 @@ async function addPrescriptionToInvoice(rxId) {
             <div className="p-5 border-b flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
-                <p className="text-sm text-gray-500">
-                  Loaded from <span className="font-medium">GET /api/invoices</span>.
-                </p>
               </div>
               <button
                 onClick={loadInvoices}
@@ -862,19 +859,18 @@ async function addPrescriptionToInvoice(rxId) {
         {tab === "prescriptions" && (
           <div className="bg-white rounded-3xl border shadow-sm">
             <div className="p-5 border-b">
-              <div className="p-5 border-b flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Prescriptions</h2>
-              <p className="text-sm text-gray-500">Search and add to invoice.</p>
-            </div>
+              <div className="p-5 border-b flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Prescriptions</h2>
+              </div>
 
-            <button
-              onClick={loadPrescriptionsAll}
-              className="px-3 h-9 rounded-xl text-sm font-medium border bg-gray-900 text-white border-gray-900 hover:bg-gray-800 transition"
-            >
-              All
-            </button>
-          </div>
+              <button
+                onClick={loadPrescriptionsAll}
+                className="px-3 h-9 rounded-xl text-sm font-medium border bg-white hover:bg-gray-50 transition"
+              >
+                Refresh
+              </button>
+            </div>
 
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
