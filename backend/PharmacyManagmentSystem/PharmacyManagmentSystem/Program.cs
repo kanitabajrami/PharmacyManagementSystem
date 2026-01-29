@@ -165,6 +165,7 @@ namespace PharmacyManagmentSystem
             app.MapGet("/", () => "Pharmacy API is running");
 
             app.MapControllers();
+            app.MapGet("/version", () => "cors-fix-1");
 
             app.Run();
         }
