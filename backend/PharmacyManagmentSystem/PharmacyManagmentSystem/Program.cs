@@ -27,8 +27,17 @@ namespace PharmacyManagmentSystem
             builder.Services.AddOpenApi();
 
 
+            //builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            // options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            var cs = builder.Configuration.GetConnectionString("DefaultConnection");
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new Exception("Missing ConnectionStrings:DefaultConnection (set ConnectionStrings__DefaultConnection in Azure).");
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(cs));
+
+
 
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -137,9 +146,15 @@ namespace PharmacyManagmentSystem
                 app.UseSwaggerUI();
             }
 
-            await SeedRolesAndAdminAsync(app);
-
-
+            try
+            {
+                await SeedRolesAndAdminAsync(app);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("SEED FAILED: " + ex);
+                // Don't crash the app in production
+            }
             app.UseHttpsRedirection();
 
 
