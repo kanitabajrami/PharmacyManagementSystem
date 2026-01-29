@@ -113,6 +113,21 @@ namespace PharmacyManagmentSystem
 
             var app = builder.Build();
 
+            // -------------------- Apply migrations on startup --------------------
+            try
+            {
+                using var scope = app.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await db.Database.MigrateAsync();
+                Console.WriteLine("✅ Database migrations applied successfully.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ MIGRATION FAILED: " + ex);
+                // Optional: if you want to stop the app when DB is broken, uncomment:
+                // throw;
+            }
+
             // -------------------- Seed (don’t crash app) --------------------
             static async Task SeedRolesAndAdminAsync(WebApplication app)
             {
