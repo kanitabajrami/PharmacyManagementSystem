@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,30 +18,54 @@ namespace PharmacyManagmentSystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-
+            // -------------------- Services --------------------
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
 
+            // ✅ Swagger (Swashbuckle) – use this, remove AddOpenApi/MapOpenApi to avoid conflicts
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Pharmacy API", Version = "v1" });
 
-            //builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            // options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Enter: Bearer <your_token>"
+                });
 
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
+            // ✅ Database (must exist in Azure as ConnectionStrings__DefaultConnection or Connection Strings: DefaultConnection)
             var cs = builder.Configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrWhiteSpace(cs))
                 throw new Exception("Missing ConnectionStrings:DefaultConnection (set ConnectionStrings__DefaultConnection in Azure).");
 
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(cs));
+            builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(cs));
 
-
-
-            builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>()
+            // ✅ Identity
+            builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-
+            // ✅ Auth (JWT)
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -65,60 +88,32 @@ namespace PharmacyManagmentSystem
                 };
             });
 
-            builder.Services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Pharmacy API", Version = "v1" });
-
-                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Enter: Bearer <your_token>"
-                });
-
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
-    });
-            });
-
             builder.Services.AddAuthorization();
 
+            // ✅ DI
             builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
             builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
             builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
-          
-
             builder.Services.AddScoped<PrescriptionHelper>();
-          
 
-
+            // ✅ CORS – allow your local + Azure Static Web Apps frontend origin
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowReactApp", policy =>
-                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://thankful-water-079e32703.6.azurestaticapps.net", "https://pharmacymanagementsystem-fvbjgah5b9axg3hz.francecentral-01.azurewebsites.net")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod());
-                          
+                    policy.WithOrigins(
+                            "http://localhost:3000",
+                            "http://localhost:5173",
+                            "https://thankful-water-079e32703.6.azurestaticapps.net"
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                );
             });
 
             var app = builder.Build();
 
-
+            // -------------------- Seed (don’t crash app) --------------------
             static async Task SeedRolesAndAdminAsync(WebApplication app)
             {
                 using var scope = app.Services.CreateScope();
@@ -138,18 +133,6 @@ namespace PharmacyManagmentSystem
                     await userManager.AddToRoleAsync(user, "Admin");
             }
 
-            app.UseSwagger();
-            app.UseSwaggerUI();
-
-
-            app.MapGet("/", () => "Pharmacy API is running");
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-               
-            }
-
             try
             {
                 await SeedRolesAndAdminAsync(app);
@@ -157,19 +140,31 @@ namespace PharmacyManagmentSystem
             catch (Exception ex)
             {
                 Console.WriteLine("SEED FAILED: " + ex);
-                // Don't crash the app in production
             }
+
+            // -------------------- Middleware (ORDER MATTERS) --------------------
             app.UseHttpsRedirection();
 
-
             app.UseRouting();
+
+            // ✅ CORS must be after routing and before auth
             app.UseCors("AllowReactApp");
 
             app.UseAuthentication();
             app.UseAuthorization();
-            app.MapControllers();
 
-            
+            // ✅ Swagger (enable in Production too)
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Pharmacy API v1");
+                c.RoutePrefix = "swagger";
+            });
+
+            // ✅ Simple root endpoint
+            app.MapGet("/", () => "Pharmacy API is running");
+
+            app.MapControllers();
 
             app.Run();
         }
