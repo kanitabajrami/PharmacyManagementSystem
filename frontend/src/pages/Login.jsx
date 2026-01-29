@@ -6,7 +6,7 @@ const [username, setUsername] = useState("");
 const [password, setPassword] = useState("");
 const [loading, setLoading] = useState(false);
 const navigate = useNavigate();
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE =   "https://pharmacymanagementsystem-fvbjgah5b9axg3hz.francecentral-01.azurewebsites.net";
 
 const handleLogin = async (e) => {
 e.preventDefault();
