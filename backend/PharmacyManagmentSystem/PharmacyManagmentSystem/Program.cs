@@ -116,15 +116,18 @@ namespace PharmacyManagmentSystem
             // -------------------- Apply migrations on startup --------------------
             try
             {
-                using var scope = app.Services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                await db.Database.MigrateAsync();
+                using (var scope = app.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    await db.Database.MigrateAsync();
+                }
+
                 Console.WriteLine("✅ Database migrations applied successfully.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("❌ MIGRATION FAILED: " + ex);
-                // Optional: if you want to stop the app when DB is broken, uncomment:
+                // If you want the app to fail fast when DB is broken, uncomment:
                 // throw;
             }
 
@@ -138,8 +141,10 @@ namespace PharmacyManagmentSystem
                 string[] roles = { "Admin", "User" };
 
                 foreach (var r in roles)
+                {
                     if (!await roleManager.RoleExistsAsync(r))
                         await roleManager.CreateAsync(new IdentityRole(r));
+                }
 
                 var adminUserName = "blenda";
                 var user = await userManager.FindByNameAsync(adminUserName);
@@ -154,8 +159,9 @@ namespace PharmacyManagmentSystem
             }
             catch (Exception ex)
             {
-                Console.WriteLine("SEED FAILED: " + ex);
+                Console.WriteLine("❌ SEED FAILED: " + ex);
             }
+
 
             // -------------------- Middleware (ORDER MATTERS) --------------------
             app.UseHttpsRedirection();
