@@ -110,7 +110,7 @@ namespace PharmacyManagmentSystem
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowReactApp", policy =>
-                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://thankful-water-079e32703.6.azurestaticapps.net")
+                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://thankful-water-079e32703.6.azurestaticapps.net", "https://pharmacymanagementsystem-fvbjgah5b9axg3hz.francecentral-01.azurewebsites.net")
                           .AllowAnyHeader()
                           .AllowAnyMethod());
                           
