@@ -138,12 +138,16 @@ namespace PharmacyManagmentSystem
                     await userManager.AddToRoleAsync(user, "Admin");
             }
 
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
+
+            app.MapGet("/", () => "Pharmacy API is running");
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
-                app.UseSwagger();
-                app.UseSwaggerUI();
+               
             }
 
             try
