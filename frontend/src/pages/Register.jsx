@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 export default function Register() {
   const [form, setForm] = useState({
     userName: "",
@@ -16,7 +18,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://localhost:7201/api/auth/register", {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -37,6 +39,7 @@ export default function Register() {
       setLoading(false);
     }
   };
+
 
   return (
   <div className="min-h-screen bg-gray-50">
