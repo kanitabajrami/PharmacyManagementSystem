@@ -110,9 +110,8 @@ namespace PharmacyManagmentSystem
             // ✅ CORS – allow your Vercel + local origins
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowReactApp", policy =>
-                    policy
-                        .WithOrigins(
+                options.AddDefaultPolicy(policy =>
+                    policy.WithOrigins(
                             "https://pharmacy-management-system-liart.vercel.app",
                             "http://localhost:5173",
                             "http://localhost:3000"
@@ -121,6 +120,7 @@ namespace PharmacyManagmentSystem
                         .AllowAnyMethod()
                 );
             });
+
 
             var app = builder.Build();
 
@@ -199,7 +199,7 @@ namespace PharmacyManagmentSystem
 
             app.UseRouting();
 
-            app.UseCors("AllowReactApp");   // ✅ before auth
+            app.UseCors();   // ✅ before auth
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -216,7 +216,7 @@ namespace PharmacyManagmentSystem
             app.MapGet("/", () => "Pharmacy API is running");
             app.MapGet("/version", () => "cors-fix-3");
 
-            app.MapControllers();
+            app.MapControllers().RequireCors();
 
             app.Run();
         }
