@@ -3,12 +3,15 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 /* ================= API FETCH ================= */
-const API_BASE = "https://localhost:7201";
+/* ================= API FETCH ================= */
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("token");
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+
+  const res = await fetch(url, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -24,15 +27,14 @@ async function apiFetch(path, options = {}) {
 
   if (!text) return null;
 
-  // ✅ If response is JSON → parse it
   const contentType = res.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return JSON.parse(text);
   }
 
-  // ✅ Otherwise return raw text
   return text;
 }
+
 
 
 function get(obj, ...keys) {
