@@ -7,7 +7,9 @@
     using PharmacyManagmentSystem.Helpers;
     using PharmacyManagmentSystem.Models;
     using PharmacyManagmentSystem.Repositories;
-    using PharmacyManagmentSystem.Services;
+    using Microsoft.AspNetCore.HttpOverrides;
+
+using PharmacyManagmentSystem.Services;
     using System.Text;
 
     namespace PharmacyManagmentSystem
@@ -191,8 +193,13 @@
                 }
 
 
-                // -------------------- Middleware (ORDER MATTERS) --------------------
-                app.UseHttpsRedirection();
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
+            // -------------------- Middleware (ORDER MATTERS) --------------------
+            app.UseHttpsRedirection();
 
                 app.UseRouting();
 
@@ -217,7 +224,8 @@
                 // ✅ Simple root endpoint
                 app.MapGet("/", () => "Pharmacy API is running");
 
-            app.MapControllers();
+            app.MapControllers().RequireCors("AllowReactApp");
+
             app.MapGet("/version", () => "cors-fix-3");
 
                 app.Run();
