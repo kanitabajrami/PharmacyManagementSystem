@@ -65,8 +65,18 @@
                     .AddEntityFrameworkStores<ApplicationDbContext>()
                     .AddDefaultTokenProviders();
 
-                // ✅ Auth (JWT)
-                builder.Services.AddAuthentication(options =>
+            var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+            var jwtAudience = builder.Configuration["Jwt:Audience"];
+            var jwtKey = builder.Configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(jwtIssuer) ||
+                string.IsNullOrWhiteSpace(jwtAudience) ||
+                string.IsNullOrWhiteSpace(jwtKey))
+            {
+                throw new Exception("Missing JWT settings. Set Jwt__Issuer, Jwt__Audience, Jwt__Key in Azure App Settings.");
+            }
+            // ✅ Auth (JWT)
+            builder.Services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -79,11 +89,12 @@
                         ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        ValidIssuer = jwtIssuer,
+                        ValidAudience = jwtAudience,
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
+                            Encoding.UTF8.GetBytes(jwtKey)
                         ),
+
                         ClockSkew = TimeSpan.Zero
                     };
                 });
@@ -102,11 +113,16 @@
             {
                 options.AddPolicy("AllowReactApp", policy =>
                     policy
-                        .SetIsOriginAllowed(_ => true)   // ✅ allow ANY origin (TEMP)
+                        .WithOrigins(
+                            "https://pharmacy-management-system-liart.vercel.app",
+                            "http://localhost:5173",
+                            "http://localhost:3000"
+                        )
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                 );
             });
+
 
 
 
@@ -201,8 +217,8 @@
                 // ✅ Simple root endpoint
                 app.MapGet("/", () => "Pharmacy API is running");
 
-                app.MapControllers();
-                app.MapGet("/version", () => "cors-fix-3");
+            app.MapControllers();
+            app.MapGet("/version", () => "cors-fix-3");
 
                 app.Run();
             }
