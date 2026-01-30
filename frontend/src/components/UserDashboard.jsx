@@ -14,12 +14,16 @@ import { useNavigate } from "react-router-dom";
  * If you later add /api/invoices/me and /api/prescription/me, switch the endpoints here.
  */
 
-const API_BASE = "https://localhost:7201";
+/* ================= API FETCH ================= */
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("token");
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  // ensure exactly one slash between base + path
+  const url = `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+
+  const res = await fetch(url, {
     ...options,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -30,22 +34,20 @@ async function apiFetch(path, options = {}) {
 
   const text = await res.text();
 
-  // if not OK, throw the best message we can
   if (!res.ok) {
     throw new Error(text || `Request failed (${res.status})`);
   }
 
   if (!text) return null;
 
-  // parse JSON only if content-type says JSON
   const contentType = res.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return JSON.parse(text);
   }
 
-  // otherwise return plain text
   return text;
 }
+
 
 
 function get(obj, ...keys) {
