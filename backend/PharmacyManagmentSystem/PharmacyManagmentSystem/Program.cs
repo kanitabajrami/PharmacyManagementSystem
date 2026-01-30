@@ -104,7 +104,9 @@ namespace PharmacyManagmentSystem
                     policy.WithOrigins(
                             "http://localhost:3000",
                             "http://localhost:5173",
-                            "https://purple-plant-033d2741e.6.azurestaticapps.net"
+                            "https://purple-plant-033d2741e.6.azurestaticapps.net",
+                            "https://purple-plant-033d2741e.azurestaticapps.net"
+
                         )
                         .AllowAnyHeader()
                         .AllowAnyMethod()
