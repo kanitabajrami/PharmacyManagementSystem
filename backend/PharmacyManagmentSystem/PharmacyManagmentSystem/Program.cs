@@ -197,6 +197,17 @@ namespace PharmacyManagmentSystem
             // ✅ HTTPS / Routing / CORS / Auth (correct order)
             app.UseHttpsRedirection();
 
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Method == HttpMethods.Options)
+                {
+                    context.Response.StatusCode = 204;
+                    return;
+                }
+
+                await next();
+            });
+
             app.UseRouting();
 
             app.UseCors();   // ✅ before auth
