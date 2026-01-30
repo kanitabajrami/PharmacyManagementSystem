@@ -129,7 +129,34 @@ using PharmacyManagmentSystem.Services;
 
 
             var app = builder.Build();
-                app.UseExceptionHandler(errorApp =>
+            // ✅ HARD FIX: handle OPTIONS preflight before any middleware can reject it
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Method == "OPTIONS")
+                {
+                    var origin = context.Request.Headers["Origin"].ToString();
+
+                    // Allow only your frontend + local dev
+                    var allowed = origin == "https://pharmacy-management-system-liart.vercel.app"
+                               || origin == "http://localhost:5173"
+                               || origin == "http://localhost:3000";
+
+                    if (allowed)
+                    {
+                        context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                        context.Response.Headers["Vary"] = "Origin";
+                        context.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
+                        context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
+                    }
+
+                    context.Response.StatusCode = 204; // No Content
+                    return;
+                }
+
+                await next();
+            });
+
+            app.UseExceptionHandler(errorApp =>
                 {
                     errorApp.Run(async context =>
                     {
