@@ -6,7 +6,7 @@ const [username, setUsername] = useState("");
 const [password, setPassword] = useState("");
 const [loading, setLoading] = useState(false);
 const navigate = useNavigate();
-const API_BASE =   "https://pharmacymanagementsystem-fvbjgah5b9axg3hz.francecentral-01.azurewebsites.net";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 const handleLogin = async (e) => {
 e.preventDefault();
@@ -14,9 +14,9 @@ setLoading(true);
 
 try {
 const response = await fetch(`${API_BASE}/api/auth/login`, {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ userNameOrEmail: username, password }),
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ userNameOrEmail: username, password }),
 });
 
 if (!response.ok) {
