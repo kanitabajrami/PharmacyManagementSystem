@@ -97,22 +97,20 @@
                 builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
                 builder.Services.AddScoped<PrescriptionHelper>();
 
-                // ✅ CORS – allow your local + Azure Static Web Apps frontend origin
-                builder.Services.AddCors(options =>
-                {
-                    options.AddPolicy("AllowReactApp", policy =>
-                        policy.WithOrigins(
-                                "http://localhost:3000",
-                                "http://localhost:5173",
-                                "https://pharmacy-management-system-liart.vercel.app"
-                            )
-                            .AllowAnyHeader()
-                            .AllowAnyMethod()
-                    );
-                });
+            // ✅ CORS – allow your local + Azure Static Web Apps frontend origin
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp", policy =>
+                    policy
+                        .SetIsOriginAllowed(_ => true)   // ✅ allow ANY origin (TEMP)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                );
+            });
 
 
-                var app = builder.Build();
+
+            var app = builder.Build();
                 app.UseExceptionHandler(errorApp =>
                 {
                     errorApp.Run(async context =>
@@ -185,8 +183,8 @@
                 // ✅ CORS must be after routing and before auth
                 app.UseCors("AllowReactApp");
 
-                app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
-              .RequireCors("AllowReactApp");
+              //  app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
+              //.RequireCors("AllowReactApp");
 
 
                 app.UseAuthentication();
