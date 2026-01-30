@@ -184,6 +184,9 @@ namespace PharmacyManagmentSystem
             // ✅ CORS must be after routing and before auth
             app.UseCors("AllowReactApp");
 
+            app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
+                .RequireCors("AllowReactApp");
+
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -199,7 +202,7 @@ namespace PharmacyManagmentSystem
             app.MapGet("/", () => "Pharmacy API is running");
 
             app.MapControllers();
-            app.MapGet("/version", () => "cors-fix-2");
+            app.MapGet("/version", () => "cors-fix-3");
 
             app.Run();
         }
