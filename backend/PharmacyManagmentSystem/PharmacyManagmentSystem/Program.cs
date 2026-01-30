@@ -206,11 +206,11 @@ using PharmacyManagmentSystem.Services;
                 // ✅ CORS must be after routing and before auth
                 app.UseCors("AllowReactApp");
 
-              //  app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
-              //.RequireCors("AllowReactApp");
+                app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
+              .RequireCors("AllowReactApp");
 
 
-                app.UseAuthentication();
+            app.UseAuthentication();
                 app.UseAuthorization();
 
                 // ✅ Swagger (enable in Production too)
