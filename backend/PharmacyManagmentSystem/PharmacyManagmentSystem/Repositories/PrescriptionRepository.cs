@@ -55,10 +55,7 @@ namespace PharmacyManagmentSystem.Repositories
                 await _dbcontext.SaveChangesAsync();
             }
         }
-
-      
-
-    public async Task<IEnumerable<Prescription>> SearchAsync(string? embg,  string? patientName, string? doctorName)
+        public async Task<IEnumerable<Prescription>> SearchAsync(string? embg,  string? patientName, string? doctorName)
         {
             var q = _dbcontext.Prescriptions
                 .AsNoTracking()
@@ -69,11 +66,8 @@ namespace PharmacyManagmentSystem.Repositories
             if (!string.IsNullOrWhiteSpace(embg))
             {
                 var e = embg.Trim();
-                // exact match (recommended for EMBG)
+                // exact match 
                 q = q.Where(p => p.EMBG == e);
-
-                // If you want "contains" search instead, use this:
-                // q = q.Where(p => p.EMBG != null && EF.Functions.ILike(p.EMBG, $"%{e}%"));
             }
 
             if (!string.IsNullOrWhiteSpace(patientName))
@@ -92,27 +86,10 @@ namespace PharmacyManagmentSystem.Repositories
                 .OrderByDescending(p => p.DateIssued)
                 .ToListAsync();
         }
-
-
-
-
-    public async Task<bool> EmbgExistsAsync(string embg)
+        public async Task<bool> EmbgExistsAsync(string embg)
         {
             embg = embg.Trim();
             return await _dbcontext.Prescriptions.AnyAsync(p => p.EMBG == embg);
         }
-
-
-        //public async Task<IEnumerable<Prescription>> GetExpiredPrescriptions()
-        //{
-        //    return await _dbcontext.Prescriptions.Include(p => p.PrescriptionMedicines).ThenInclude(pm => pm.Medicine).Where(d => d.DateIssued.AddDays(30) < DateTime.UtcNow).ToListAsync();
-        //}
-        //public async Task<bool> IsExpiredAsync(int id)
-        //{
-        //    var prescription = await GetByIdAsync(id);
-        //    if (prescription == null)
-        //        throw new Exception("Prescription not found");
-        //    return prescription.DateIssued.AddDays(30) < DateTime.UtcNow;       // Expired if its older than 30 days
-        //}
     }
 }

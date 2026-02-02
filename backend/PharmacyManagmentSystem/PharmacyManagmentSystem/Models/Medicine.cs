@@ -12,7 +12,7 @@ namespace PharmacyManagmentSystem.Models
         public string Category {  get; set; }
 
         [Required]
-        public string BatchNumber { get; set; } //largoe
+        public string BatchNumber { get; set; } 
 
         [Required]
         public DateTime ExpiryDate { get; set; }
@@ -26,7 +26,7 @@ namespace PharmacyManagmentSystem.Models
         // Foreign key
         // Each medicine belongs to one supplier
         public int SupplierId { get; set; }
-        public Supplier Supplier { get; set; } //largoe
+        public Supplier Supplier { get; set; } 
 
         public ICollection<InvoiceItem> InvoiceItems { get; set; }      // Medicine can appear in many invoices
         public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; }        // Many-to-many: medicine can be in many prescriptions

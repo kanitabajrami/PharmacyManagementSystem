@@ -38,7 +38,6 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(MedicineMapper.ToResponseDto(medicine));
         }
 
-
         [HttpPost]
         [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Create([FromBody] MedicineDto dto)
