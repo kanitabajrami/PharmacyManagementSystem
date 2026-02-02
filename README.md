@@ -225,14 +225,17 @@ Some of the endpoints are:
 
 
 ## Screenshots
-
+### Screenshots from the Admin Dashboard
 ![Screenshots](/assets/screenshots/1.jpeg)
 ![Screenshots](/assets/screenshots/2.jpeg)
 ![Screenshots](/assets/screenshots/3.jpeg)
 ![Screenshots](/assets/screenshots/4.jpeg)
+
+### Screenshots from the Pharmacist Dashboard
 ![Screenshots](/assets/screenshots/5.jpeg)
 ![Screenshots](/assets/screenshots/6.jpeg)
 ![Screenshots](/assets/screenshots/7.jpeg)
+
 
 
 
