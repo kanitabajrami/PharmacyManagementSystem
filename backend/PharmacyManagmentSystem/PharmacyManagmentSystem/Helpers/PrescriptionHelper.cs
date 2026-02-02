@@ -14,36 +14,43 @@ namespace PharmacyManagmentSystem.Helpers
         }
 
         // Check if medicines in the prescription are not in the database
-        public async Task<List<PrescriptionMedicineCreateDto>> HandleMissingMedicines (Prescription prescription, PrescriptionDto dto)
+        public async Task<List<PrescriptionMedicineCreateDto>> HandleMissingMedicines(Prescription prescription, PrescriptionDto dto)
         {
             var missing = new List<PrescriptionMedicineCreateDto>();
 
-            // Loop through all medicines in the DTO and check if they exist in the database
+            // Prevent null crash
+            if (dto.Medicines == null || dto.Medicines.Count == 0)
+            {
+                prescription.Status = PrescriptionStatus.Pending;
+                return missing;
+            }
+
+            //  One DB query instead of 1 per medicine
+            var requestedIds = dto.Medicines.Select(x => x.MedicineId).Distinct().ToList();
+
+            var existingIds = await _dbcontext.Medicines
+                .Where(m => requestedIds.Contains(m.Id))
+                .Select(m => m.Id)
+                .ToListAsync();
+
             foreach (var pm in dto.Medicines)
             {
-                var exists = await _dbcontext.Medicines.AnyAsync(x => x.Id == pm.MedicineId);
-
-                if (!exists)
+                if (!existingIds.Contains(pm.MedicineId))
                 {
-                    // name must exist if not in DB
+                    // MedicineName must be provided when not in DB
                     if (string.IsNullOrWhiteSpace(pm.MedicineName))
-                        throw new ArgumentException($"MedicineName is required when medicine (ID: {pm.MedicineId}) is not in the database.");
+                        pm.MedicineName = "(missing name)"; // or throw if you want strict
 
                     missing.Add(pm);
                 }
             }
 
-            // Remove any missing medicines from the prescription
-            foreach (var m in missing)
-            {
-                var toRemove = prescription.PrescriptionMedicines.FirstOrDefault(x => x.MedicineId == m.MedicineId);
-                if(toRemove != null)
-                {
-                    prescription.PrescriptionMedicines.Remove(toRemove);
-                }
-            }
+            // Remove missing medicines from entity BEFORE saving (avoids FK error)
+            prescription.PrescriptionMedicines = prescription.PrescriptionMedicines
+                .Where(x => existingIds.Contains(x.MedicineId))
+                .ToList();
 
-            // Set the prescriptions status ready if all the medicines exsit, otherwise set it to pending
+            //  Status
             prescription.Status = missing.Count == 0 ? PrescriptionStatus.Ready : PrescriptionStatus.Pending;
 
             // Log missing medicines
@@ -53,23 +60,18 @@ namespace PharmacyManagmentSystem.Helpers
                 Directory.CreateDirectory(logFolder);
 
                 var path = Path.Combine(logFolder, "missing_medicines.txt");
-
                 var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
                 var lines = missing.Select(m =>
                     $"[{timestamp}] " +
-                    $"EMBG={dto.EMBG} | " +
-                    $"Patient={dto.PatientName} | " +
-                    $"Doctor={dto.DoctorName} | " +
-                    $"Medicine=\"{m.MedicineName}\" | " +
-                    $"Qty={m.Quantity}"
+                    $"EMBG={dto.EMBG} | Patient={dto.PatientName} | Doctor={dto.DoctorName} | " +
+                    $"Medicine=\"{m.MedicineName}\" (Id={m.MedicineId}) | Qty={m.Quantity}"
                 );
 
-                File.AppendAllLines(path, lines);
+                await File.AppendAllLinesAsync(path, lines);
             }
 
-
-            return missing;     // Return the list of missing medicines
+            return missing;
         }
     }
 }

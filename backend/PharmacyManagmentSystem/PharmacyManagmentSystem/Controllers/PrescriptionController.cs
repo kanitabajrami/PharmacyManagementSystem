@@ -68,60 +68,75 @@
                 return Ok(results.Select(PrescriptionMapper.toDto));
             }
 
-            // POST: api/Prescription
-            [HttpPost]
-            [Authorize(Roles ="Admin")]
-            public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
+        // POST: api/Prescription
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromBody] PrescriptionDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
             {
-                if (!ModelState.IsValid) 
-                    return BadRequest(ModelState);
+                dto.EMBG = dto.EMBG?.Trim();
 
-                try
-                {
-                    if (await _repository.EmbgExistsAsync(dto.EMBG))
-                        return BadRequest(new { message = "EMBG already exists." });
+                if (await _repository.EmbgExistsAsync(dto.EMBG))
+                    return BadRequest(new { message = "EMBG already exists." });
 
-                    var prescription = PrescriptionMapper.ToEntity(dto);        // Map DTO to entity
+                // ✅ Avoid default date issues
+                if (dto.DateIssued == default)
+                    dto.DateIssued = DateTime.UtcNow;
 
-                    await _helper.HandleMissingMedicines(prescription, dto);        // Check for missing medicine and log
+                var prescription = PrescriptionMapper.ToEntity(dto);
 
-                    await _repository.AddAsync(prescription);       // Save changes
-                    return CreatedAtAction(nameof(GetById), new { id = prescription.Id }, PrescriptionMapper.toDto(prescription));
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Failed to import prescription: {ex.Message}");
-                }
+                // ✅ Removes missing medicines from entity + logs them
+                var missing = await _helper.HandleMissingMedicines(prescription, dto);
+
+                await _repository.AddAsync(prescription);
+
+                return CreatedAtAction(nameof(GetById),
+                    new { id = prescription.Id },
+                    new
+                    {
+                        prescription = PrescriptionMapper.toDto(prescription),
+                        missingMedicinesLogged = missing.Select(x => new { x.MedicineId, x.MedicineName, x.Quantity }).ToList()
+                    });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Failed to import prescription: {ex.Message}");
+            }
+        }
 
-            // PUT: api/Prescription/{id}
-            //[HttpPut("{id}")]
-        
-            //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
-            //{
-            //    if(!ModelState.IsValid)
-            //        return BadRequest(ModelState);
-            //    try
-            //    {
-            //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
-            //        if (existing == null)
-            //            return NotFound("Prescription not found");
 
-            //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
+        // PUT: api/Prescription/{id}
+        //[HttpPut("{id}")]
 
-            //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
+        //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
+        //{
+        //    if(!ModelState.IsValid)
+        //        return BadRequest(ModelState);
+        //    try
+        //    {
+        //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
+        //        if (existing == null)
+        //            return NotFound("Prescription not found");
 
-            //        await _repository.UpdateAsync(existing);        //Save changes
-            //        return Ok(PrescriptionMapper.toDto(existing));
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
-            //    }
-            //}
+        //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
 
-            // DELETE: api/Prescription/{id}
-            [HttpDelete("{id}")]
+        //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
+
+        //        await _repository.UpdateAsync(existing);        //Save changes
+        //        return Ok(PrescriptionMapper.toDto(existing));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
+        //    }
+        //}
+
+        // DELETE: api/Prescription/{id}
+        [HttpDelete("{id}")]
             [Authorize(Roles ="Admin")]
             public async Task<IActionResult> Delete(int id)
             {
