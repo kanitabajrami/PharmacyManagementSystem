@@ -8,13 +8,15 @@ namespace PharmacyManagmentSystem.Helpers
         // This is used for POST
         public static Prescription ToEntity(PrescriptionDto dto)
         {
+            var meds = dto.Medicines ?? new List<PrescriptionMedicineCreateDto>();
+
             return new Prescription
             {
                 EMBG = dto.EMBG,
                 PatientName = dto.PatientName,
                 DoctorName = dto.DoctorName,
                 DateIssued = dto.DateIssued,
-                PrescriptionMedicines = dto.Medicines.Select(m => new PrescriptionMedicine
+                PrescriptionMedicines = meds.Select(m => new PrescriptionMedicine
                 {
                     MedicineId = m.MedicineId,
                     Quantity = m.Quantity
@@ -22,6 +24,7 @@ namespace PharmacyManagmentSystem.Helpers
                 Status = PrescriptionStatus.Pending
             };
         }
+
 
         // This is used for PUT
         public static void UpdateEntity(Prescription entity, PrescriptionDto dto)
