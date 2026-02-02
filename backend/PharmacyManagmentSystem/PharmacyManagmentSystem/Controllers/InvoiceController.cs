@@ -60,6 +60,25 @@ namespace PharmacyManagmentSystem.Controllers
             return Ok(InvoiceMapper.ToResponseDto(invoice));
         }
 
+
+        //[HttpGet("{id:int}")]
+        //[Authorize]
+        //public async Task<IActionResult> GetById(int id)
+        //{
+        //    var invoice = await _invoiceRepo.GetByIdAsync(id);
+        //    if (invoice == null) return NotFound($"Invoice with id {id} not found.");
+        //    return Ok(InvoiceMapper.ToResponseDto(invoice));
+        //}
+
+
+        //[HttpGet("user/{userId}")]
+        //[Authorize(Roles ="Admin")]
+        //public async Task<IActionResult> GetByUser(string userId)
+        //{
+        //    var invoices = await _invoiceRepo.GetByUserAsync(userId);
+        //    return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
+        //}
+
         [HttpGet("user/by-username/{username}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetByUsername(string username)
@@ -74,6 +93,7 @@ namespace PharmacyManagmentSystem.Controllers
             var invoices = await _invoiceRepo.GetByUserAsync(user.Id);
             return Ok(invoices.Select(InvoiceMapper.ToResponseDto));
         }
+
 
         [HttpGet("range")]
         [Authorize(Roles = "Admin")]
@@ -207,4 +227,6 @@ namespace PharmacyManagmentSystem.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, InvoiceMapper.ToResponseDto(created));
         }
     }
+
+
 }

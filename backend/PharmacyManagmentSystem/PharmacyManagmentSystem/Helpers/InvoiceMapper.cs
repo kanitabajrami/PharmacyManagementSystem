@@ -30,7 +30,7 @@ namespace PharmacyManagmentSystem.Helpers
             LineTotal = item.LineTotal
         };
 
-        // for lightweight invoice list endpoint
+        // Optional: for lightweight invoice list endpoint
         public static InvoiceListItemDto ToListItemDto(Invoice inv) => new InvoiceListItemDto
         {
             Id = inv.Id,

@@ -114,7 +114,6 @@ VITE_API_URL=https://localhost:7201
 ## API Reference
 
 All endpoints require a **JWT token** in the `Authorization` header except for **User Registration.**
-Some of the endpoints are:
 
 ### Users
 
@@ -225,18 +224,12 @@ Some of the endpoints are:
 
 
 ## Screenshots
-### Screenshots from the Admin Dashboard
-![Screenshots](/assets/screenshots/1.jpeg)
-![Screenshots](/assets/screenshots/2.jpeg)
-![Screenshots](/assets/screenshots/3.jpeg)
-![Screenshots](/assets/screenshots/4.jpeg)
 
-### Screenshots from the Pharmacist Dashboard
-![Screenshots](/assets/screenshots/5.jpeg)
-![Screenshots](/assets/screenshots/6.jpeg)
-![Screenshots](/assets/screenshots/7.jpeg)
+![Login page](/assets/screenshots/login.png)
 
+![Admin dashboard](/assets/screenshots/admin.png)
 
+![User dashboar](/assets/screenshots/user.png)
 
 
 

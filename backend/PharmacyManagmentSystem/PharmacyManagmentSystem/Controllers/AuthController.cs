@@ -30,6 +30,7 @@ namespace PharmacyManagmentSystem.Controllers
 
             var result = await _userManager.CreateAsync(user, dto.Password);
 
+
             if (!result.Succeeded)
                 return BadRequest(result.Errors.Select(e => e.Description));
 
@@ -64,6 +65,9 @@ namespace PharmacyManagmentSystem.Controllers
             if (!ok) return Unauthorized("Invalid credentials.");
 
             var roles = await _userManager.GetRolesAsync(user); // get all roles
+
+            // Optional: you can also generate a JWT token if needed
+            // var token = await CreateTokenAsync(user);
 
             return Ok(new { username = user.UserName, roles });
         }

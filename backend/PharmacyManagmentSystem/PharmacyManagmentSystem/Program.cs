@@ -23,7 +23,7 @@ namespace PharmacyManagmentSystem
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
-            // Swagger
+            // ✅ Swagger (Swashbuckle)
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Pharmacy API", Version = "v1" });
@@ -54,14 +54,14 @@ namespace PharmacyManagmentSystem
                 });
             });
 
-            // Database
+            // ✅ Database
             var cs = builder.Configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrWhiteSpace(cs))
                 throw new Exception("Missing ConnectionStrings:DefaultConnection (set ConnectionStrings__DefaultConnection in Azure).");
 
             builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(cs));
 
-            // Identity
+            // ✅ Identity
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -77,7 +77,7 @@ namespace PharmacyManagmentSystem
                 throw new Exception("Missing JWT settings. Set Jwt__Issuer, Jwt__Audience, Jwt__Key in Azure App Settings.");
             }
 
-            // Auth (JWT)
+            // ✅ Auth (JWT)
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -100,14 +100,14 @@ namespace PharmacyManagmentSystem
 
             builder.Services.AddAuthorization();
 
-            // DI
+            // ✅ DI
             builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
             builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
             builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
             builder.Services.AddScoped<PrescriptionHelper>();
 
-            // CORS – allow your Vercel + local origins
+            // ✅ CORS – allow your Vercel + local origins
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(policy =>
@@ -126,13 +126,13 @@ namespace PharmacyManagmentSystem
 
             // -------------------- Middleware (ORDER MATTERS) --------------------
 
-            // Forwarded headers FIRST (Azure proxy)
+            // ✅ Forwarded headers FIRST (Azure proxy)
             app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
 
-            // Global exception handler early
+            // ✅ Global exception handler early
             app.UseExceptionHandler(errorApp =>
             {
                 errorApp.Run(async context =>
@@ -160,6 +160,7 @@ namespace PharmacyManagmentSystem
             catch (Exception ex)
             {
                 Console.WriteLine("❌ MIGRATION FAILED: " + ex);
+                // throw; // optional fail-fast
             }
 
             // -------------------- Seed (don’t crash app) --------------------
@@ -193,7 +194,7 @@ namespace PharmacyManagmentSystem
                 Console.WriteLine("❌ SEED FAILED: " + ex);
             }
 
-            // HTTPS / Routing / CORS / Auth (correct order)
+            // ✅ HTTPS / Routing / CORS / Auth (correct order)
             app.UseHttpsRedirection();
 
             app.Use(async (context, next) =>
@@ -209,12 +210,12 @@ namespace PharmacyManagmentSystem
 
             app.UseRouting();
 
-            app.UseCors();   // before auth
+            app.UseCors();   // ✅ before auth
 
             app.UseAuthentication();
             app.UseAuthorization();
 
-            // Swagger (enabled in production too)
+            // ✅ Swagger (enabled in production too)
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
@@ -222,7 +223,7 @@ namespace PharmacyManagmentSystem
                 c.RoutePrefix = "swagger";
             });
 
-            // Simple endpoints
+            // ✅ Simple endpoints
             app.MapGet("/", () => "Pharmacy API is running");
             app.MapGet("/version", () => "cors-fix-3");
 
