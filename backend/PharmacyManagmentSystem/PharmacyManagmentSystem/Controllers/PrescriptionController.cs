@@ -94,32 +94,6 @@
                 }
             }
 
-            // PUT: api/Prescription/{id}
-            //[HttpPut("{id}")]
-        
-            //public async Task<IActionResult> Update(int id, [FromBody] PrescriptionDto dto)
-            //{
-            //    if(!ModelState.IsValid)
-            //        return BadRequest(ModelState);
-            //    try
-            //    {
-            //        var existing = await _repository.GetByIdAsync(id);      // Get existing prescription
-            //        if (existing == null)
-            //            return NotFound("Prescription not found");
-
-            //        PrescriptionMapper.UpdateEntity(existing, dto);         // Update entity with DTO
-
-            //        await _helper.HandleMissingMedicines(existing, dto);        // Check missing medicine and log
-
-            //        await _repository.UpdateAsync(existing);        //Save changes
-            //        return Ok(PrescriptionMapper.toDto(existing));
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        return StatusCode(500, $"Failed to update prescription: {ex.Message}");
-            //    }
-            //}
-
             // DELETE: api/Prescription/{id}
             [HttpDelete("{id}")]
             [Authorize(Roles ="Admin")]
@@ -128,7 +102,6 @@
                 await _repository.DeleteAsync(id);
                 return NoContent();
             }
- 
 
             // GET: api/Prescription/missing-medicines
             [HttpGet("missing-medicines")]
@@ -143,21 +116,5 @@
                 var lines = System.IO.File.ReadAllLines(logPath);
                 return Ok(lines);
             }
-
-            //// GET: api/Prescription/expired
-            //[HttpGet("expired")]
-            //public async Task<IActionResult> GetExpired()
-            //{
-            //    var expired = await _repository.GetExpiredPrescriptions();
-            //    return Ok(expired);
-            //}
-
-            //// GET: api/Prescription/{id}/isExpired
-            //[HttpGet("{id}/isExpired")]
-            //public async Task<IActionResult> IsExpired(int id)
-            //{
-            //    var result = await _repository.IsExpiredAsync(id);
-            //    return Ok(result);
-            //}
         }
     }
